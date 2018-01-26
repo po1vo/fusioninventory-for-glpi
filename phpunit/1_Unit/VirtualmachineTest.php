@@ -76,6 +76,7 @@ class VirtualmachineTest extends RestoreDatabase_TestCase {
           'batteries'      => [],
           'remote_mgmt'    => [],
           'bios'           => [],
+          'powersupply'    => [],
           'itemtype'       => 'Computer'
           ];
       $a_inventory['Computer'] = [
