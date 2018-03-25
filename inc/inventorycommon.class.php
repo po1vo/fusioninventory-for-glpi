@@ -63,7 +63,7 @@ class PluginFusioninventoryInventoryCommon extends CommonDBTM {
     *
     * @return void
     */
-   function importFirmwares($itemtype, $a_inventory, $items_id) {
+   function importFirmwares($itemtype, $a_inventory, $items_id, $no_history = false) {
       if (!isset($a_inventory['firmwares']) || !count($a_inventory['firmwares'])) {
          return;
       }
@@ -103,7 +103,7 @@ class PluginFusioninventoryInventoryCommon extends CommonDBTM {
                'is_dynamic'   => 1,
                'entities_id'  => $_SESSION['glpiactive_entity']
             ];
-            $relation->add($input);
+            $relation->add($input, [], !$no_history);
          }
       }
    }
@@ -114,24 +114,40 @@ class PluginFusioninventoryInventoryCommon extends CommonDBTM {
     * @param array $a_inventory
     * @param integer $items_id
     */
-   function importPorts($itemtype, $a_inventory, $items_id) {
+   function importPorts($itemtype, $a_inventory, $items_id, $no_history = false) {
 
       $networkPort     = new NetworkPort();
       $pfNetworkPort   = new PluginFusioninventoryNetworkPort();
       $networkports_id = 0;
 
       foreach ($a_inventory['networkport'] as $a_port) {
-         $a_ports_DB = current($networkPort->find(
-                    "`itemtype`='$itemtype'
-                       AND `items_id`='".$items_id."'
-                       AND `instantiation_type`='NetworkPortEthernet'
-                       AND `logical_number` = '".$a_port['logical_number']."'", '', 1));
-         if (!isset($a_ports_DB['id'])) {
+
+         $params = [
+            'itemtype'           => $itemtype,
+            'items_id'           => $items_id,
+            'instantiation_type' => 'NetworkPortEthernet',
+            'logical_number'     => $a_port['logical_number']
+         ];
+         $new = false;
+         if ($networkPort->getFromDBByCrit($params) == false) {
+            //The port has not been found.
+            //We then try to check if the port exists with another
+            //logical_number but the same mac
+            //The case has been found on SHARP printers
+            $params = ['itemtype'           => $itemtype,
+                       'items_id'           => $items_id,
+                       'instantiation_type' => 'NetworkPortEthernet',
+                       'mac'                => $a_port['mac']];
+            if ($networkPort->getFromDBByCrit($params) == false) {
+               $new = true;
+            }
+         }
+         if ($new) {
             // Add port
             $a_port['instantiation_type'] = 'NetworkPortEthernet';
-            $a_port['items_id'] = $items_id;
-            $a_port['itemtype'] = $itemtype;
-            $networkports_id = $networkPort->add($a_port);
+            $a_port['items_id']    = $items_id;
+            $a_port['itemtype']    = $itemtype;
+            $networkports_id = $networkPort->add($a_port, [], !$no_history);
             unset($a_port['id']);
             $a_pfnetworkport_DB = current($pfNetworkPort->find(
                     "`networkports_id`='".$networkports_id."'", '', 1));
@@ -139,8 +155,8 @@ class PluginFusioninventoryInventoryCommon extends CommonDBTM {
             $pfNetworkPort->update($a_port);
          } else {
             // Update port
-            $networkports_id = $a_ports_DB['id'];
-            $a_port['id'] = $a_ports_DB['id'];
+            $networkports_id = $networkPort->fields['id'];
+            $a_port['id']    = $networkPort->fields['id'];
             $networkPort->update($a_port);
             unset($a_port['id']);
 
@@ -169,7 +185,7 @@ class PluginFusioninventoryInventoryCommon extends CommonDBTM {
     *
     * @return void
     */
-   function importSimcards($itemtype, $a_inventory, $items_id) {
+   function importSimcards($itemtype, $a_inventory, $items_id, $no_history = false) {
       if (!isset($a_inventory['simcards']) || !count($a_inventory['simcards'])) {
          return;
       }
@@ -202,12 +218,12 @@ class PluginFusioninventoryInventoryCommon extends CommonDBTM {
          //Check if there's already a connection between the simcard and an asset
          $relation->getFromDBByCrit($input);
 
-         $input['itemtype']    = $itemtype;
-         $input['items_id']    = $items_id;
-         $input['is_dynamic']  = 1;
-         $input['entities_id'] = $_SESSION['glpiactive_entity'];
+         $input['itemtype']      = $itemtype;
+         $input['items_id']      = $items_id;
+         $input['is_dynamic']    = 1;
+         $input['entities_id']   = $_SESSION['glpiactive_entity'];
          if ($relation->isNewItem()) {
-            $relations_id = $relation->add($input);
+            $relations_id = $relation->add($input, [], !$no_history);
          } else {
             $input['id']  = $relation->getID();
             $relations_id = $relation->update($input);
