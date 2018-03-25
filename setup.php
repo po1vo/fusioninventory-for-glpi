@@ -102,7 +102,6 @@ function plugin_init_fusioninventory() {
       $Plugin->registerClass('PluginFusioninventoryAgent',
          [
             'addtabon' => [
-               'Computer',
                'Printer',
                'NetworkEquipment',
                'PluginFusioninventoryCredentialIp'
@@ -116,10 +115,6 @@ function plugin_init_fusioninventory() {
       $Plugin->registerClass('PluginFusioninventoryTaskjob',
          [
             'addtabon' => [
-               //'Computer',
-               //'Printer',
-               //'NetworkEquipment',
-               //'PluginFusioninventoryUnmanaged',
                'PluginFusioninventoryTask',
             ]
          ]
@@ -259,7 +254,8 @@ function plugin_init_fusioninventory() {
       $PLUGIN_HOOKS['add_javascript']['fusioninventory'] = [];
       $PLUGIN_HOOKS['add_css']['fusioninventory'] = [];
       if (strpos(filter_input(INPUT_SERVER, "SCRIPT_NAME"), "plugins/fusioninventory") != false
-          || strpos(filter_input(INPUT_SERVER, "SCRIPT_NAME"), "front/printer.form.php") != false) {
+          || strpos(filter_input(INPUT_SERVER, "SCRIPT_NAME"), "front/printer.form.php") != false
+          || strpos(filter_input(INPUT_SERVER, "SCRIPT_NAME"), "front/computer.form.php") != false) {
          $PLUGIN_HOOKS['add_css']['fusioninventory'][]="css/views.css";
          $PLUGIN_HOOKS['add_css']['fusioninventory'][]="css/deploy.css";
 
@@ -292,11 +288,11 @@ function plugin_init_fusioninventory() {
             $PLUGIN_HOOKS['add_javascript']['fusioninventory'],
             "lib/lazy.js-0.4.0/lazy".($debug_mode?"":".min").".js",
             "lib/mustache.js-2.0.0/mustache".($debug_mode?"":".min").".js",
-            "js/taskjobs".($debug_mode?"":".min").".js"
+            "js/taskjobs".($debug_mode || !file_exists('js/taskjobs.min.js')?"":".min").".js"
          );
       }
       if (script_endswith("menu.php")) {
-         $PLUGIN_HOOKS['add_javascript']['fusioninventory'][] = "js/stats.js";
+         $PLUGIN_HOOKS['add_javascript']['fusioninventory'][] = "js/stats".($debug_mode || !file_exists('js/stats.min.js')?"":".min").".js";
       }
 
       if (Session::haveRight('plugin_fusioninventory_configuration', READ)
@@ -461,7 +457,8 @@ function plugin_init_fusioninventory() {
    }
 
    // Add unmanaged devices in list of devices with networport
-   $CFG_GLPI["netport_types"][] = "PluginFusioninventoryUnmanaged";
+   //$CFG_GLPI["netport_types"][] = "PluginFusioninventoryUnmanaged";
+   $CFG_GLPI["networkport_types"][] = "PluginFusioninventoryUnmanaged";
 
    // exclude some pages from splitted layout
    if (isset($CFG_GLPI['layout_excluded_pages'])) { // to be compatible with glpi 0.85
@@ -484,7 +481,7 @@ function plugin_version_fusioninventory() {
            'oldname'        => 'tracker',
            'author'         => '<a href="mailto:david@durieux.family">David DURIEUX</a>
                                 & FusionInventory team',
-           'homepage'       => 'http://forge.fusioninventory.org/projects/fusioninventory-for-glpi/',
+           'homepage'       => 'https://github.com/fusioninventory/fusioninventory-for-glpi',
            'requirements'   => [
               'glpi' => [
                  'min' => '9.2',
@@ -522,6 +519,22 @@ function plugin_fusioninventory_check_prerequisites() {
 
    if (!isset($_SESSION['glpi_plugins'])) {
       $_SESSION['glpi_plugins'] = [];
+   }
+
+   if (version_compare(GLPI_VERSION, '9.2-dev', '!=')
+      && version_compare(GLPI_VERSION, '9.2', 'lt')
+      || version_compare(GLPI_VERSION, '9.3', 'ge')) {
+      if (method_exists('Plugin', 'messageIncompatible')) {
+         echo Plugin::messageIncompatible('core', '9.2', '9.3');
+      } else {
+         echo __('Your GLPI version not compatible, require >= 9.2 and < 9.3', 'fusioninventory');
+      }
+      return FALSE;
+   }
+
+   if (!function_exists('finfo_open')) {
+      echo __('fileinfo extension (PHP) is required...', 'fusioninventory');
+      return FALSE;
    }
 
    $plugin = new Plugin();

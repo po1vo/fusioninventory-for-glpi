@@ -54,6 +54,7 @@ if (!defined('GLPI_ROOT')) {
  */
 class PluginFusioninventoryFormatconvert {
 
+   const FI_SOFTWARE_SEPARATOR = "$$$$";
    /**
     * Initialize the foreignkey itemtypes
     *
@@ -81,6 +82,21 @@ class PluginFusioninventoryFormatconvert {
 
       $PLUGIN_FUSIONINVENTORY_XML = $xml;
       $datainventory = json_decode(json_encode((array)$xml), TRUE);
+
+      //TODO: factorize this code with older one (need to find a suitable solution for all)
+      //Fix multivalued/standalone
+      $multi = [
+         'FIRMWARES',
+         'SIMCARDS'
+      ];
+      foreach ($multi as $elt) {
+         if (count($xml->xpath('/REQUEST/CONTENT/DEVICE/' . $elt)) == 1) {
+            $tmp = $datainventory['CONTENT']['DEVICE'][$elt];
+            unset($datainventory['CONTENT']['DEVICE'][$elt]);
+            $datainventory['CONTENT']['DEVICE'][$elt] = [$tmp];
+         }
+      }
+
       if (isset($datainventory['CONTENT']['ENVS'])) {
          unset($datainventory['CONTENT']['ENVS']);
       }
@@ -263,6 +279,7 @@ class PluginFusioninventoryFormatconvert {
          'antivirus'               => array(),
          'licenseinfo'             => array(),
          'batteries'               => array(),
+         'simcard'                 => array(),
          'monitor'                 => array(),
          'printer'                 => array(),
          'peripheral'              => array(),
@@ -645,13 +662,14 @@ class PluginFusioninventoryFormatconvert {
 
                // test date_install
                $matches = array();
-               preg_match("/^(\d{2})\/(\d{2})\/(\d{4})$/", $a_battery['manufacturing_date'], $matches);
-               if (count($matches) == 4) {
-                  $a_battery['manufacturing_date'] = $matches[3]."-".$matches[2]."-".$matches[1];
-               } else {
-                  unset($a_battery['manufacturing_date']);
+               if (isset($a_battery['manufacturing_date'])) {
+                  preg_match("/^(\d{2})\/(\d{2})\/(\d{4})$/", $a_battery['manufacturing_date'], $matches);
+                  if (count($matches) == 4) {
+                     $a_battery['manufacturing_date'] = $matches[3]."-".$matches[2]."-".$matches[1];
+                  } else {
+                     unset($a_battery['manufacturing_date']);
+                  }
                }
-
                $a_inventory['batteries'][] = $a_battery;
             }
          }
@@ -846,8 +864,9 @@ class PluginFusioninventoryFormatconvert {
                         if (isset($array_tmp['ip'])) {
                            unset($array_tmp['ip']);
                         }
+                        // Test if the provided network speed is an integer number
                         if (isset($array_tmp['speed'])
-                                && is_numeric($array_tmp['speed'])) {
+                                && ctype_digit (strval($array_tmp['speed']))) {
                            // Old agent version have speed in b/s instead Mb/s
                            if ($array_tmp['speed'] > 100000) {
                               $array_tmp['speed'] = $array_tmp['speed'] / 1000000;
@@ -948,9 +967,7 @@ class PluginFusioninventoryFormatconvert {
                      break;
                }
             }
-            if (isset($a_drives['FILESYSTEM']) && $a_drives['FILESYSTEM'] == 'nfs') {
-               $isNetworkDriveOrFS = true;
-            }
+            $isNetworkDriveOrFS = $thisc->isANetworkDrive($a_drives);
             if ($pfConfig->getValue("component_drive") == '0'
                 OR ($pfConfig->getValue("component_networkdrive") == '0' AND $isNetworkDriveOrFS)
                 OR ($pfConfig->getValue("component_removablemedia") == '0' AND $isRemovableMedia)) {
@@ -1410,6 +1427,9 @@ class PluginFusioninventoryFormatconvert {
          }
       }
 
+      //Simcards
+      $thisc->simcardTransformation($array, $a_inventory);
+
       // * STORAGE/VOLUMES
       $a_inventory['storage'] = array();
 
@@ -1421,7 +1441,8 @@ class PluginFusioninventoryFormatconvert {
             //Try to avoid duplicate license,
             //as FI agent may send several entries for the same license
             foreach ($a_inventory['licenseinfo'] as $lic) {
-               if ($lic['fullname'] == $a_licenseinfo['FULLNAME']
+               if (isset($a_licenseinfo['FULLNAME'])
+                  && $lic['fullname'] == $a_licenseinfo['FULLNAME']
                   && $lic['serial'] == $a_licenseinfo['KEY']) {
                   $insert = false;
                }
@@ -1513,21 +1534,34 @@ class PluginFusioninventoryFormatconvert {
     * Sometimes we can have 2 same software, but one without manufacturer and
     * one with. So in this case, delete the software without manufacturer
     */
+
+      //By default, no operating system is set
       $operatingsystems_id = 0;
+      //Get the operating system of the computer if set
       if (isset($a_inventory['fusioninventorycomputer']['items_operatingsystems_id']['operatingsystems_id'])) {
          $operatingsystems_id = $a_inventory['fusioninventorycomputer']['items_operatingsystems_id']['operatingsystems_id'];
       }
 
-      $softwareWithManufacturer = array();
-      $softwareWithoutManufacturer = array();
+      //Array to store softwares where the manufacturer is set
+      $softwareWithManufacturer    = [];
+      //Array to store software where the manufacturer is not set
+      $softwareWithoutManufacturer = [];
 
+      //Get the default entity for softwares, as defined in the entity's
+      //configuration
       $entities_id_software = Entity::getUsedConfig('entities_id_software',
                                                     $entities_id);
-      $is_software_recursive = 0;
-      $nb_RuleDictionnarySoftware = countElementsInTable("glpi_rules",
-                                                         "`sub_type`='RuleDictionnarySoftware'
-                                                            AND `is_active`='1'");
 
+      //By default a software is not recursive
+      $is_software_recursive = 0;
+
+      //Count the number of software dictionnary rules
+      $nb_RuleDictionnarySoftware
+                                 = countElementsInTable("glpi_rules",
+                                                ['sub_type'  => 'RuleDictionnarySoftware',
+                                                 'is_active' => 1
+                                                ]
+                                 );
       //Configuration says that software can be created in the computer's entity
       if ($entities_id_software < 0) {
          $entities_id_software = $entities_id;
@@ -1536,23 +1570,33 @@ class PluginFusioninventoryFormatconvert {
          //It should be set as recursive
          $is_software_recursive = 1;
       }
-      $a_inventory['software'] = array();
 
+      //Initialize the output software array
+      $a_inventory['software'] = [];
+
+      //Dictionnary for softwares
       $rulecollection = new RuleDictionnarySoftwareCollection();
 
       foreach ($a_inventory['SOFTWARES'] as $a_softwares) {
+         //If the PUBLISHER field is an array, get the first value only
+         //TODO : document when it can happened. A FI or OCS agent bug ?
          if (isset($a_softwares['PUBLISHER'])
                  && gettype($a_softwares['PUBLISHER']) == 'array')  {
             $a_softwares['PUBLISHER'] = current($a_softwares['PUBLISHER']);
          }
 
+         //Store the raw values in the array
          $array_tmp = $this->addValues($a_softwares,
-                                        array(
-                                           'PUBLISHER'   => 'manufacturers_id',
-                                           'NAME'        => 'name',
-                                           'VERSION'     => 'version',
-                                           'INSTALLDATE' => 'date_install',
-                                           'SYSTEM_CATEGORY' => '_system_category'));
+                                       [
+                                        'PUBLISHER'       => 'manufacturers_id',
+                                        'NAME'            => 'name',
+                                        'VERSION'         => 'version',
+                                        'INSTALLDATE'     => 'date_install',
+                                        'SYSTEM_CATEGORY' => '_system_category'
+                                       ]
+         );
+         //If the name of the software is empty, use it's GUID as name
+         //it should only happend on Windows...
          if (!isset($array_tmp['name'])
                  || $array_tmp['name'] == '') {
             if (isset($a_softwares['GUID'])
@@ -1561,85 +1605,124 @@ class PluginFusioninventoryFormatconvert {
             }
          }
          $array_tmp['operatingsystems_id'] = $operatingsystems_id;
-         // test date_install
+
+         //Check if the install date has the right format to be inserted in DB
          if (isset($array_tmp['date_install'])) {
-            $matches = array();
+            $matches = [];
             preg_match("/^(\d{2})\/(\d{2})\/(\d{4})$/", $array_tmp['date_install'], $matches);
+            //This is the right date format : rewrite the date
             if (count($matches) == 4) {
                $array_tmp['date_install'] = $matches[3]."-".$matches[2]."-".$matches[1];
             } else {
+               //Not the right format, remove the date
                unset($array_tmp['date_install']);
             }
          }
 
-         if (!(!isset($array_tmp['name'])
-                 || $array_tmp['name'] == '')) {
+         //If the software name exists and is defined
+         if (isset($array_tmp['name']) && $array_tmp['name'] != '') {
             if (count($array_tmp) > 0) {
-               $res_rule = array();
+               $res_rule       = [];
+               //Save the original software infos for further tests
+               $original_infos = $array_tmp;
+
+               //Only play rules engine if there's at least one rule
+               //for software dictionnary
                if ($nb_RuleDictionnarySoftware > 0) {
-                  $res_rule = $rulecollection->processAllRules(
-                                               [
-                                                "name"         => $array_tmp['name'],
-                                                "manufacturer" => $array_tmp['manufacturers_id'],
-                                                "old_version"  => $array_tmp['version'],
-                                                "entities_id"  => $entities_id_software,
-                                                "_system_category" => $array_tmp['_system_category']
-                                                ]
-                                             );
+                  $rule_input = [
+                   "name"             => $array_tmp['name'],
+                   "manufacturer"     => $array_tmp['manufacturers_id'],
+                   "old_version"      => $array_tmp['version'],
+                   "entities_id"      => $entities_id_software,
+                   "_system_category" => $array_tmp['_system_category']
+                  ];
+                  $res_rule = $rulecollection->processAllRules($rule_input);
                }
 
-               if (isset($res_rule['_ignore_import'])
-                       && $res_rule['_ignore_import'] == 1) {
+               if (!isset($res_rule['_ignore_import'])
+                  || $res_rule['_ignore_import'] != 1) {
 
-               } else {
+                  //If the name has been modified by the rules engine
                   if (isset($res_rule["name"])) {
                      $array_tmp['name'] = $res_rule["name"];
                   }
+                  //If the version has been modified by the rules engine
                   if (isset($res_rule["version"])) {
                      $array_tmp['version'] = $res_rule["version"];
                   }
+                  //If the manufacturer has been modified or set by the rules engine
                   if (isset($res_rule["manufacturer"])) {
-                     $array_tmp['manufacturers_id'] = Dropdown::import("Manufacturer",
-                                                   array('name' => $res_rule["manufacturer"]));
+                     $array_tmp['manufacturers_id']
+                                             = Dropdown::import("Manufacturer",
+                                                                ['name' => $res_rule["manufacturer"]]
+                                               );
                   } else if (isset($array_tmp['manufacturers_id'])
                           && $array_tmp['manufacturers_id'] != ''
                           && $array_tmp['manufacturers_id'] != '0') {
 
+                     //Add the current manufacturer to the cache of manufacturers
                      if (!isset($this->manufacturer_cache[$array_tmp['manufacturers_id']])) {
                         $new_value = Dropdown::importExternal('Manufacturer',
                                                               $array_tmp['manufacturers_id']);
                         $this->manufacturer_cache[$array_tmp['manufacturers_id']] = $new_value;
                      }
+                     //Set the manufacturer using the cache
                      $array_tmp['manufacturers_id'] =
                                  $this->manufacturer_cache[$array_tmp['manufacturers_id']];
                   } else {
+                     //Manufacturer not defined : set it's value to 0
                      $array_tmp['manufacturers_id'] = 0;
                   }
+
+                  //The rules engine has modified the entity
+                  //(meaning that the software is recursive and defined
+                  //in an upper entity)
                   if (isset($res_rule['new_entities_id'])) {
                      $array_tmp['entities_id'] = $res_rule['new_entities_id'];
-                     $is_software_recursive = 1;
+                     $is_software_recursive    = 1;
                   }
+
+                  //The entity has not been modified and is not set :
+                  //use the computer's entity
                   if (!isset($array_tmp['entities_id'])
                           || $array_tmp['entities_id'] == '') {
                      $array_tmp['entities_id'] = $entities_id_software;
                   }
+                  //version is undefined, set it to blank
                   if (!isset($array_tmp['version'])) {
                      $array_tmp['version'] = "";
                   }
+                  //This is a realy computer, not a template
                   $array_tmp['is_template_computer'] = 0;
-                  $array_tmp['is_deleted_computer'] = 0;
-                  $array_tmp['is_recursive']= $is_software_recursive;
+
+                  //The computer is not deleted
+                  $array_tmp['is_deleted_computer']  = 0;
+
+                  //Store if the software is recursive or not
+                  $array_tmp['is_recursive']         = $is_software_recursive;
+
+                  //Step 1 : test using the old format
+                  //String with the manufacturer
                   $comp_key = strtolower($array_tmp['name']).
-                               "$$$$".strtolower($array_tmp['version']).
-                               "$$$$".$array_tmp['manufacturers_id'].
-                               "$$$$".$array_tmp['entities_id'].
-                               "$$$$".$array_tmp['operatingsystems_id'];
+                               self::FI_SOFTWARE_SEPARATOR.strtolower($array_tmp['version']).
+                               self::FI_SOFTWARE_SEPARATOR.$array_tmp['manufacturers_id'].
+                               self::FI_SOFTWARE_SEPARATOR.$array_tmp['entities_id'].
+                               self::FI_SOFTWARE_SEPARATOR.$array_tmp['operatingsystems_id'];
 
+                  //String without the manufacturer
                   $comp_key_simple = strtolower($array_tmp['name']).
-                               "$$$$".strtolower($array_tmp['version']).
-                               "$$$$".$array_tmp['entities_id'].
-                               "$$$$".$array_tmp['operatingsystems_id'];
+                               self::FI_SOFTWARE_SEPARATOR.strtolower($array_tmp['version']).
+                               self::FI_SOFTWARE_SEPARATOR.$array_tmp['entities_id'].
+                               self::FI_SOFTWARE_SEPARATOR.$array_tmp['operatingsystems_id'];
 
+                  //String without the manufacturer
+                  $comp_key_noos = strtolower($array_tmp['name']).
+                              self::FI_SOFTWARE_SEPARATOR.strtolower($array_tmp['version']).
+                              self::FI_SOFTWARE_SEPARATOR.$array_tmp['manufacturers_id'].
+                              self::FI_SOFTWARE_SEPARATOR.$array_tmp['entities_id'].
+                              self::FI_SOFTWARE_SEPARATOR.'0';
+
+                  $array_tmp['comp_key_noos'] = $comp_key_noos;
                   if ($array_tmp['manufacturers_id'] == 0) {
                      $softwareWithoutManufacturer[$comp_key_simple] = $array_tmp;
                   } else {
@@ -1652,13 +1735,16 @@ class PluginFusioninventoryFormatconvert {
             }
          }
       }
-      foreach ($softwareWithoutManufacturer as $key=>$array_tmp) {
+
+      //Browse all softwares without a manufacturer. If one exists with a manufacturer
+      //the remove the one without
+      foreach ($softwareWithoutManufacturer as $key => $array_tmp) {
          if (!isset($softwareWithManufacturer[$key])) {
             $comp_key = strtolower($array_tmp['name']).
-                         "$$$$".strtolower($array_tmp['version']).
-                         "$$$$".$array_tmp['manufacturers_id'].
-                         "$$$$".$array_tmp['entities_id'].
-                         "$$$$".$array_tmp['operatingsystems_id'];
+                         self::FI_SOFTWARE_SEPARATOR.strtolower($array_tmp['version']).
+                         self::FI_SOFTWARE_SEPARATOR.$array_tmp['manufacturers_id'].
+                         self::FI_SOFTWARE_SEPARATOR.$array_tmp['entities_id'].
+                         self::FI_SOFTWARE_SEPARATOR.$array_tmp['operatingsystems_id'];
             if (!isset($a_inventory['software'][$comp_key])) {
                $a_inventory['software'][$comp_key] = $array_tmp;
             }
@@ -1839,7 +1925,6 @@ class PluginFusioninventoryFormatconvert {
     */
    function replaceids($array, $itemtype, $items_id, $level=0) {
       global $CFG_GLPI;
-
       $a_lockable = PluginFusioninventoryLock::getLockFields(getTableForItemType($itemtype),
                                                              $items_id);
 
@@ -1914,51 +1999,14 @@ class PluginFusioninventoryFormatconvert {
       return $array;
    }
 
-
-
    /**
-    * Convert network equipment in GLPI prepared data
-    *
-    * @param array $array
-    * @return array
-    */
-   static function networkequipmentInventoryTransformation($array) {
-
-      $a_inventory = array();
-      $thisc = new self();
-
-      // * INFO
-      $array_tmp = $thisc->addValues($array['INFO'],
-                                     array(
-                                        'NAME'         => 'name',
-                                        'SERIAL'       => 'serial',
-                                        'ID'           => 'id',
-                                        'LOCATION'     => 'locations_id',
-                                        'MODEL'        => 'networkequipmentmodels_id',
-                                        'MANUFACTURER' => 'manufacturers_id',
-                                        'RAM'          => 'ram',
-                                        'MEMORY'       => 'memory',
-                                        'MAC'          => 'mac'));
-
-      $array_tmp['is_dynamic'] = 1;
-      $a_inventory['NetworkEquipment'] = $array_tmp;
-      $a_inventory['itemtype'] = 'NetworkEquipment';
-
-
-      $array_tmp = $thisc->addValues($array['INFO'],
-                                     array(
-                                        'COMMENTS' => 'sysdescr',
-                                        'UPTIME'   => 'uptime',
-                                        'CPU'      => 'cpu',
-                                        'MEMORY'   => 'memory'));
-      if (!isset($array_tmp['cpu'])
-              || $array_tmp['cpu'] == '') {
-         $array_tmp['cpu'] = 0;
-      }
-
-      $array_tmp['last_fusioninventory_update'] = date('Y-m-d H:i:s');
-      $a_inventory['PluginFusioninventoryNetworkEquipment'] = $array_tmp;
-
+   * Manage translation for firmwares
+   * @since 9.2+2.0
+   *
+   * @param array $array the inventory
+   * @param array $a_inventory reference to the output inventory
+   */
+   function firmwareTransformation($array, &$a_inventory) {
       //manage firmwares
       //['INFO']['FIRMWARE'] is the only available value until FI agent 2.3.21
       //['FIRWARES'] (multivalued) will be available in next releases
@@ -1981,7 +2029,7 @@ class PluginFusioninventoryFormatconvert {
             if (isset($firmware['VERSION'])) {
                $firmware['VERSION'] = self::cleanFwVersion($firmware['VERSION']);
             }
-            $a_firmwares[] = $thisc->addValues(
+            $a_firmwares[] = $this->addValues(
                $firmware,
                $mapping
             );
@@ -1991,6 +2039,138 @@ class PluginFusioninventoryFormatconvert {
             $a_inventory['firmwares'] = $a_firmwares;
          }
       }
+   }
+
+   /**
+   * Manage transformation for simcards
+   * @since 9.2+2.0
+   *
+   * @param array $array the inventory
+   * @param array $a_inventory reference to the output inventory
+   */
+   function simcardTransformation($array, &$a_inventory) {
+      if (isset($array['SIMCARDS'])) {
+         $mapping = [
+            'ICCID'         => 'serial',
+            'MANUFACTURER'  => 'manufacturers_id',
+            'IMSI'          => 'msin'
+         ];
+
+         foreach ($array['SIMCARDS'] as $id => $simcard) {
+            //If there's an ICCID value: process the simcard
+            if (isset($simcard['ICCID'])) {
+               $a_inventory['simcards'][] = $this->addValues($simcard, $mapping);
+            }
+         }
+      }
+   }
+
+   /**
+   * Manage transformation for network ports
+   * @since 9.2+2.0
+   *
+   * @param array $array the inventory
+   * @param array $a_inventory reference to the output inventory
+   */
+   function networkPortTransformation($array, &$a_inventory) {
+      // * PORTS
+      $a_inventory['networkport'] = [];
+      if (isset($array['PORTS'])) {
+         foreach ($array['PORTS']['PORT'] as $a_port) {
+            if (isset($a_port['IFNUMBER'])) {
+               $array_tmp = $this->addValues($a_port,
+                                              array(
+                                                 'IFNAME'   => 'name',
+                                                 'IFNUMBER' => 'logical_number',
+                                                 'MAC'      => 'mac',
+                                                 'IP'       => 'ip',
+                                                 'IFTYPE'   => 'iftype'));
+
+               $a_inventory['networkport'][$a_port['IFNUMBER']] = $array_tmp;
+            }
+         }
+      }
+   }
+
+   /**
+   * Manage transformation for general informations
+   * @since 9.2+2.0
+   *
+   * @param array $array the inventory
+   * @param array $a_inventory reference to the output inventory
+   */
+   function generalInfosTransformation($itemtype, $array, &$a_inventory) {
+      // * INFO
+      $fk    = getForeignKeyFieldForTable(getTableForItemType($itemtype.'Model'));
+      $infos = [
+         'NAME'         => 'name',
+         'SERIAL'       => 'serial',
+         'ID'           => 'id',
+         'LOCATION'     => 'locations_id',
+         'MODEL'        => $fk,
+         'MANUFACTURER' => 'manufacturers_id',
+      ];
+      switch ($itemtype) {
+         case 'Printer':
+            $infos['MEMORY']            = 'memory_size';
+            break;
+         case 'NetworkEquipment':
+            $infos['RAM']    = 'ram';
+            $infos['MEMORY'] = 'memory';
+            $infos['MAC']    = 'mac';
+            break;
+      }
+      $array_tmp               = $this->addValues($array['INFO'], $infos);
+      $array_tmp['is_dynamic'] = 1;
+      if ($itemtype == 'Printer') {
+         $array_tmp['have_ethernet'] = 1;
+      }
+      $a_inventory[$itemtype]  = $array_tmp;
+      $a_inventory['itemtype'] = $itemtype;
+   }
+
+   /**
+   * Manage transformation for additional general informations
+   * @since 9.2+2.0
+   *
+   * @param array $array the inventory
+   * @param array $a_inventory reference to the output inventory
+   */
+   function additionalInfoTransformation($itemtype, $array, &$a_inventory) {
+      $infos             = [];
+      $infos['COMMENTS'] = 'sysdescr';
+      switch ($itemtype) {
+         case 'NetworkEquipment':
+            $infos['UPTIME'] = 'uptime';
+            $infos['CPU']    = 'cpu';
+            $infos['MEMORY'] = 'memory';
+            if (!isset($array_tmp['cpu']) || $array_tmp['cpu'] == '') {
+               $array_tmp['cpu'] = 0;
+            }
+            break;
+      }
+      $array_tmp = $this->addValues($array['INFO'], $infos);
+      $array_tmp['last_fusioninventory_update']       = date('Y-m-d H:i:s');
+      $a_inventory['PluginFusioninventory'.ucfirst($itemtype)] = $array_tmp;
+   }
+
+   /**
+    * Convert network equipment in GLPI prepared data
+    *
+    * @param array $array
+    * @return array
+    */
+   static function networkequipmentInventoryTransformation($array) {
+
+      $a_inventory = [];
+      $thisc       = new self();
+
+      $thisc->generalInfosTransformation('NetworkEquipment', $array,
+                                         $a_inventory);
+      $thisc->additionalInfoTransformation('NetworkEquipment', $array,
+                                           $a_inventory);
+      $thisc->firmwareTransformation($array, $a_inventory);
+      $thisc->simcardTransformation($array, $a_inventory);
 
       // * Internal ports
       $a_inventory['internalport'] = array();
@@ -2125,55 +2305,21 @@ class PluginFusioninventoryFormatconvert {
     */
    static function printerInventoryTransformation($array) {
 
-      $a_inventory = array();
-      $thisc = new self();
+      $a_inventory = [];
+      $thisc       = new self();
 
-      // * INFO
-      $array_tmp = $thisc->addValues($array['INFO'],
-                                     array(
-                                        'NAME'         => 'name',
-                                        'SERIAL'       => 'serial',
-                                        'ID'           => 'id',
-                                        'MANUFACTURER' => 'manufacturers_id',
-                                        'LOCATION'     => 'locations_id',
-                                        'MODEL'        => 'printermodels_id',
-                                        'MEMORY'       => 'memory_size'));
-      $array_tmp['is_dynamic'] = 1;
-      $array_tmp['have_ethernet'] = 1;
-
-      $a_inventory['Printer'] = $array_tmp;
-      $a_inventory['itemtype'] = 'Printer';
-
-      $array_tmp = $thisc->addValues($array['INFO'],
-                                     array(
-                                        'COMMENTS' => 'sysdescr'));
-      $array_tmp['last_fusioninventory_update'] = date('Y-m-d H:i:s');
-      $a_inventory['PluginFusioninventoryPrinter'] = $array_tmp;
-
-      // * PORTS
-      $a_inventory['networkport'] = array();
-      if (isset($array['PORTS'])) {
-         foreach ($array['PORTS']['PORT'] as $a_port) {
-            if (isset($a_port['IFNUMBER'])) {
-               $array_tmp = $thisc->addValues($a_port,
-                                              array(
-                                                 'IFNAME'   => 'name',
-                                                 'IFNUMBER' => 'logical_number',
-                                                 'MAC'      => 'mac',
-                                                 'IP'       => 'ip',
-                                                 'IFTYPE'   => 'iftype'));
-
-               $a_inventory['networkport'][$a_port['IFNUMBER']] = $array_tmp;
-            }
-         }
-      }
+      $thisc->generalInfosTransformation('Printer', $array, $a_inventory);
+      $thisc->firmwareTransformation($array, $a_inventory);
+      $thisc->simcardTransformation($array, $a_inventory);
+      $thisc->networkPortTransformation($array, $a_inventory);
+      $thisc->additionalInfoTransformation('Printer', $array, $a_inventory);
 
       // CARTRIDGES
       $a_inventory['cartridge'] = array();
       if (isset($array['CARTRIDGES'])) {
          $pfMapping = new PluginFusioninventoryMapping();
 
-         foreach ($array['CARTRIDGES'] as $name=>$value) {
+         foreach ($array['CARTRIDGES'] as $name => $value) {
             $plugin_fusioninventory_mappings = $pfMapping->get("Printer", strtolower($name));
             if ($plugin_fusioninventory_mappings) {
                if (strstr($value, 'pages')) { // 30pages
@@ -2246,5 +2392,22 @@ class PluginFusioninventoryFormatconvert {
          return 'Drive';
       }
       return 'HardDrive';
+   }
+
+   /**
+   * Test if a drive is a local or network drive
+   * @since 9.2+2.0
+   *
+   * @param array $drive the drive inventory to be tested
+   * @return boolean true if it's a network drive, false if it's a local drive
+   */
+   function isANetworkDrive($drive) {
+      $network_drives = ['nfs', 'smbfs', 'afpfs'];
+      if (isset($drive['FILESYSTEM'])
+         && in_array(strtolower($drive['FILESYSTEM']), $network_drives)) {
+         return true;
+      } else {
+         return false;
+      }
    }
 }

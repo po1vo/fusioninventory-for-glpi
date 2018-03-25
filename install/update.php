@@ -231,6 +231,12 @@ function pluginFusioninventoryUpdate($current_version, $migrationname='Migration
    ini_set("max_execution_time", "0");
    ini_set("memory_limit", "-1");
 
+   // load abstract classes before
+   require_once GLPI_ROOT.'/plugins/fusioninventory/inc/deploypackageitem.class.php';
+   require_once GLPI_ROOT.'/plugins/fusioninventory/inc/commonview.class.php';
+   require_once GLPI_ROOT.'/plugins/fusioninventory/inc/taskview.class.php';
+   require_once GLPI_ROOT.'/plugins/fusioninventory/inc/taskjobview.class.php';
+
    foreach (glob(GLPI_ROOT.'/plugins/fusioninventory/inc/*.php') as $file) {
       require_once($file);
    }
@@ -428,6 +434,7 @@ function pluginFusioninventoryUpdate($current_version, $migrationname='Migration
       do_deploypackage_migration($migration);
       do_deploymirror_migration($migration);
       do_deploygroup_migration($migration);
+      do_deployuserinteraction_migration($migration);
       migrateTablesFromFusinvDeploy($migration);
 
 
@@ -835,6 +842,7 @@ function pluginFusioninventoryUpdate($current_version, $migrationname='Migration
       $input['group']                  = 0;
       $input['manage_osname']          = 0;
       $input['component_networkcardvirtual'] = 1;
+      $input['reprepare_job']          = 0;
       $config->addValues($input, FALSE);
 
       // Add new config values if not added
@@ -1413,7 +1421,7 @@ function do_config_migration($migration) {
                               'name' => 'unicity',
                               'type' => 'UNIQUE');
 
-   $a_table['oldkeys'] = array();
+   $a_table['oldkeys'] = array('unicity');
 
    migrateTablesFusionInventory($migration, $a_table);
 
@@ -2560,7 +2568,7 @@ function do_computercomputer_migration($migration) {
    $a_table['fields']['remote_addr']            = array('type'    => 'string',
                                                         'value'   => NULL);
    $a_table['fields']['serialized_inventory']   = array('type'    => 'longblob',
-                                                        'value'   => "");
+                                                        'value'   => null);
    $a_table['fields']['is_entitylocked']        = array('type'    => 'bool',
                                                         'value'   => "0");
    $a_table['fields']['oscomment']              = array('type'    => 'text',
@@ -4374,6 +4382,14 @@ function do_configsecurity_migration($migration) {
 
    changeDisplayPreference("5152", "PluginFusioninventoryConfigSecurity");
 
+   // Remove the protocols AES192 and AES256 because not managed in the agent
+   // with the perl module NET-SNMP
+
+   $query = "UPDATE `glpi_plugin_fusioninventory_configsecurities`
+      SET `encryption`='AES128'
+         WHERE `encryption` IN ('AES192', 'AES256')";
+   $DB->query($query);
+
 }
 
 
@@ -4863,6 +4879,34 @@ function do_computeroperatingsystem_migration($migration) {
    $migration->migrationOneTable('glpi_plugin_fusioninventory_inventorycomputercomputers');
 }
 
+/**
+ * Manage the deploy user interaction migration process
+ *
+ * @since 9.2
+ * @global object $DB
+ * @param object $migration
+ */
+function do_deployuserinteraction_migration($migration) {
+   global $DB;
+
+   if (!$DB->tableExists('glpi_plugin_fusioninventory_deployuserinteractions')) {
+      $query = "CREATE TABLE IF NOT EXISTS `glpi_plugin_fusioninventory_deployuserinteractiontemplates` (
+         `id` int(11) NOT NULL AUTO_INCREMENT,
+         `name` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
+         `entities_id` int(11) NOT NULL DEFAULT '0',
+         `is_recursive` tinyint(1) NOT NULL DEFAULT '0',
+         `date_creation` datetime DEFAULT NULL,
+         `date_mod` datetime DEFAULT NULL,
+         `json` longtext DEFAULT NULL,
+         PRIMARY KEY (`id`),
+         KEY `date_mod` (`date_mod`),
+         KEY `date_creation` (`date_creation`),
+         KEY `entities_id` (`entities_id`),
+         KEY `is_recursive` (`is_recursive`)
+      ) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=1;";
+      $DB->query($query);
+   }
+}
 
 
 /**
@@ -4918,7 +4962,7 @@ function do_deployfile_migration($migration) {
                'value'  => NULL
       ),
       'is_recursive' => array(
-               'type'   => 'tinyint(1) NOT NULL DEFAULT 0',
+               'type'   => 'tinyint(1) NOT NULL DEFAULT \'0\'',
                'value'  => 0
       ),
       'date_mod' => array(
@@ -5034,7 +5078,7 @@ function do_deploypackage_migration($migration) {
                'value' => NULL
       ),
       'is_recursive' =>  array(
-               'type' => 'tinyint(1) NOT NULL DEFAULT 0',
+               'type' => 'tinyint(1) NOT NULL DEFAULT \'0\'',
                'value' => NULL
       ),
       'date_mod' =>  array(
@@ -5289,11 +5333,11 @@ function do_deploymirror_migration($migration) {
          'value' => NULL
       ),
       'is_active' =>  array(
-         'type' => 'tinyint(1) NOT NULL DEFAULT 0',
+         'type' => 'tinyint(1) NOT NULL DEFAULT \'0\'',
          'value' => NULL
       ),
       'is_recursive' =>  array(
-         'type' => 'tinyint(1) NOT NULL DEFAULT 0',
+         'type' => 'tinyint(1) NOT NULL DEFAULT \'0\'',
          'value' => NULL
       ),
       'name' =>  array(
@@ -5552,7 +5596,7 @@ function do_dblocks_migration($migration) {
       $a_table['fields']  = array();
       $a_table['fields']['value']      = array('type'    => "varchar(100) NOT NULL DEFAULT ''",
                                                'value'   => NULL);
-      $a_table['fields']['date']       = array('type'    => 'timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP',
+      $a_table['fields']['date']       = array('type'    => 'timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP()',
                                                'value'   => NULL);
 
       $a_table['oldfields']  = array();
@@ -5578,7 +5622,7 @@ function do_dblocks_migration($migration) {
       $a_table['fields']  = array();
       $a_table['fields']['value']      = array('type'    => 'integer',
                                                'value'   => NULL);
-      $a_table['fields']['date']       = array('type'    => 'timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP',
+      $a_table['fields']['date']       = array('type'    => 'timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP()',
                                                'value'   => NULL);
 
       $a_table['oldfields']  = array();
@@ -5604,7 +5648,7 @@ function do_dblocks_migration($migration) {
       $a_table['fields']  = array();
       $a_table['fields']['value']      = array('type'    => 'bool',
                                                'value'   => NULL);
-      $a_table['fields']['date']       = array('type'    => 'timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP',
+      $a_table['fields']['date']       = array('type'    => 'timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP()',
                                                'value'   => NULL);
 
       $a_table['oldfields']  = array();
@@ -5630,7 +5674,7 @@ function do_dblocks_migration($migration) {
       $a_table['fields']  = array();
       $a_table['fields']['value']      = array('type'    => 'bool',
                                                'value'   => NULL);
-      $a_table['fields']['date']       = array('type'    => 'timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP',
+      $a_table['fields']['date']       = array('type'    => 'timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP()',
                                                'value'   => NULL);
 
       $a_table['oldfields']  = array();
@@ -6065,15 +6109,18 @@ function do_rule_migration($migration) {
            ." SET `ranking` = `ranking`+3"
            ." WHERE `sub_type`='PluginFusioninventoryInventoryRuleImport' ";
    $ranking = 0;
-     // Create rule for : Peripheral + serial
+
+      // Create rule for : Peripheral + serial
       $rulecollection = new PluginFusioninventoryInventoryRuleImportCollection();
+      $ruleimport     = new Rule();
       $input = array();
-      $input['is_active']=1;
       $input['name']='Peripheral serial';
       $input['match']='AND';
       $input['sub_type'] = 'PluginFusioninventoryInventoryRuleImport';
-      $input['ranking'] = $ranking;
-      $rule_id = $rulecollection->add($input);
+      if (!$ruleimport->getFromDBByCrit($input)) {
+         $input['is_active']=1;
+         $input['ranking'] = $ranking;
+         $rule_id = $rulecollection->add($input);
 
          // Add criteria
          $rule = $rulecollection->getRuleClass();
@@ -6107,17 +6154,21 @@ function do_rule_migration($migration) {
          $input['field'] = '_fusion';
          $input['value'] = '1';
          $ruleaction->add($input);
+         $ranking++;
+      }
 
-      $ranking++;
+
       // Create rule for : Peripheral import
       $rulecollection = new PluginFusioninventoryInventoryRuleImportCollection();
+      $ruleimport     = new Rule();
       $input = array();
-      $input['is_active']=1;
       $input['name']='Peripheral import';
       $input['match']='AND';
       $input['sub_type'] = 'PluginFusioninventoryInventoryRuleImport';
-      $input['ranking'] = $ranking;
-      $rule_id = $rulecollection->add($input);
+      if (!$ruleimport->getFromDBByCrit($input)) {
+         $input['is_active']=1;
+         $input['ranking'] = $ranking;
+         $rule_id = $rulecollection->add($input);
 
          // Add criteria
          $rule = $rulecollection->getRuleClass();
@@ -6144,36 +6195,40 @@ function do_rule_migration($migration) {
          $input['field'] = '_fusion';
          $input['value'] = '1';
          $ruleaction->add($input);
+         $ranking++;
+      }
 
-      $ranking++;
       // Create rule for : Peripheral ignore import
       $rulecollection = new PluginFusioninventoryInventoryRuleImportCollection();
+      $ruleimport     = new Rule();
       $input = array();
-      $input['is_active']=1;
       $input['name']='Peripheral ignore import';
       $input['match']='AND';
       $input['sub_type'] = 'PluginFusioninventoryInventoryRuleImport';
-      $input['ranking'] = $ranking;
-      $rule_id = $rulecollection->add($input);
+      if (!$ruleimport->getFromDBByCrit($input)) {
+         $input['is_active']=1;
+         $input['ranking'] = $ranking;
+         $rule_id = $rulecollection->add($input);
 
-      // Add criteria
-      $rule = $rulecollection->getRuleClass();
-      $rulecriteria = new RuleCriteria(get_class($rule));
-      $input = array();
-      $input['rules_id'] = $rule_id;
-      $input['criteria'] = "itemtype";
-      $input['pattern']= 'Peripheral';
-      $input['condition']=0;
-      $rulecriteria->add($input);
+         // Add criteria
+         $rule = $rulecollection->getRuleClass();
+         $rulecriteria = new RuleCriteria(get_class($rule));
+         $input = array();
+         $input['rules_id'] = $rule_id;
+         $input['criteria'] = "itemtype";
+         $input['pattern']= 'Peripheral';
+         $input['condition']=0;
+         $rulecriteria->add($input);
 
-      // Add action
-      $ruleaction = new RuleAction(get_class($rule));
-      $input = array();
-      $input['rules_id'] = $rule_id;
-      $input['action_type'] = 'assign';
-      $input['field'] = '_ignore_import';
-      $input['value'] = '1';
-      $ruleaction->add($input);
+         // Add action
+         $ruleaction = new RuleAction(get_class($rule));
+         $input = array();
+         $input['rules_id'] = $rule_id;
+         $input['action_type'] = 'assign';
+         $input['field'] = '_ignore_import';
+         $input['value'] = '1';
+         $ruleaction->add($input);
+      }
 
       // Add monitor rules (in first in rule list) when use it since 0.85
       $query = "DELETE FROM `glpi_plugin_fusioninventory_configs`"
@@ -6247,13 +6302,17 @@ function do_rule_migration($migration) {
       $DB->query($query);
 
       // Update fusinvinventory _config values to this plugin
+
+      $rulecollection = new PluginFusioninventoryInventoryRuleImportCollection();
+      $ruleimport     = new Rule();
       $input = array();
-      $input['is_active']=1;
       $input['name']='Monitor serial';
       $input['match']='AND';
       $input['sub_type'] = 'PluginFusioninventoryInventoryRuleImport';
-      $input['ranking'] = $ranking;
-      $rule_id = $rulecollection->add($input);
+      if (!$ruleimport->getFromDBByCrit($input)) {
+         $input['is_active']=1;
+         $input['ranking'] = $ranking;
+         $rule_id = $rulecollection->add($input);
 
          // Add criteria
          $rule = $rulecollection->getRuleClass();
@@ -6288,16 +6347,20 @@ function do_rule_migration($migration) {
          $input['value'] = '1';
          $ruleaction->add($input);
 
-      $ranking++;
+         $ranking++;
+      }
+
       // Create rule for : Monitor import
       $rulecollection = new PluginFusioninventoryInventoryRuleImportCollection();
+      $ruleimport     = new Rule();
       $input = array();
-      $input['is_active']=1;
       $input['name']='Monitor import';
       $input['match']='AND';
       $input['sub_type'] = 'PluginFusioninventoryInventoryRuleImport';
-      $input['ranking'] = $ranking;
-      $rule_id = $rulecollection->add($input);
+      if (!$ruleimport->getFromDBByCrit($input)) {
+         $input['is_active']=1;
+         $input['ranking'] = $ranking;
+         $rule_id = $rulecollection->add($input);
 
          // Add criteria
          $rule = $rulecollection->getRuleClass();
@@ -6325,16 +6388,20 @@ function do_rule_migration($migration) {
          $input['value'] = '1';
          $ruleaction->add($input);
 
-      $ranking++;
+         $ranking++;
+      }
+
       // Create rule for : Monitor ignore import
       $rulecollection = new PluginFusioninventoryInventoryRuleImportCollection();
+      $ruleimport     = new Rule();
       $input = array();
-      $input['is_active']=1;
       $input['name']='Monitor ignore import';
       $input['match']='AND';
       $input['sub_type'] = 'PluginFusioninventoryInventoryRuleImport';
-      $input['ranking'] = $ranking;
-      $rule_id = $rulecollection->add($input);
+      if (!$ruleimport->getFromDBByCrit($input)) {
+         $input['is_active']=1;
+         $input['ranking'] = $ranking;
+         $rule_id = $rulecollection->add($input);
 
          // Add criteria
          $rule = $rulecollection->getRuleClass();
@@ -6354,13 +6421,13 @@ function do_rule_migration($migration) {
          $input['field'] = '_ignore_import';
          $input['value'] = '1';
          $ruleaction->add($input);
+      }
 
    // Add printer rules (in first in rule list) when use it since 0.85
    $query = "DELETE FROM `glpi_plugin_fusioninventory_configs`"
            ." WHERE `type`='import_printer' ";
 
 }
-
 
 
 /**
@@ -6418,8 +6485,6 @@ function do_task_migration($migration) {
 
    migrateTablesFusionInventory($migration, $a_table);
 }
-
-
 
 /**
  * Migrate search params from the old system to the new one
@@ -8407,6 +8472,12 @@ function migrateTablesFusionInventory($migration, $a_table) {
                                     'update'=> TRUE));
    }
 
+   foreach ($a_table['oldkeys'] as $field) {
+      $migration->dropKey($a_table['name'],
+                          $field);
+   }
+   $migration->migrationOneTable($a_table['name']);
+
    foreach ($a_table['oldfields'] as $field) {
       $migration->dropField($a_table['name'],
                             $field);
@@ -8427,12 +8498,6 @@ function migrateTablesFusionInventory($migration, $a_table) {
                            $field,
                            $data['type'],
                            array('value' => $data['value']));
-   }
-   $migration->migrationOneTable($a_table['name']);
-
-   foreach ($a_table['oldkeys'] as $field) {
-      $migration->dropKey($a_table['name'],
-                          $field);
    }
    $migration->migrationOneTable($a_table['name']);
 
@@ -8733,7 +8798,6 @@ function migrateTablesFromFusinvDeploy ($migration) {
 
    $packages = $DB->request('glpi_plugin_fusioninventory_deploypackages');
    foreach ($packages as $order_config) {
-      $pfDeployPackage = new PluginFusioninventoryDeployPackage();
       $json_order = json_decode($order_config['json']);
       //print("deployorders fixer : actual order structure for ID ".$order_config['id']."\n" . print_r($json_order,true) ."\n");
 
@@ -8765,7 +8829,8 @@ function migrateTablesFromFusinvDeploy ($migration) {
          //"deployorders fixer : final order structure for ID ".$order_config['id']."\n" .
       //   json_encode($json_order,JSON_PRETTY_PRINT) ."\n"
       //);
-      $pfDeployPackage::updateOrderJson($order_config['id'], $json_order);
+      $pfDeployPackageItem = new PluginFusioninventoryDeployPackageItem();
+      $pfDeployPackageItem->updateOrderJson($order_config['id'], $json_order);
    }
 
    /**

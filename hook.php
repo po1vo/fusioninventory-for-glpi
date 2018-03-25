@@ -95,13 +95,6 @@ function plugin_fusioninventory_getAddSearchOptions($itemtype) {
          $sopt[5161]['linkfield'] = '';
          $sopt[5161]['name']      = __('FusionInventory tag', 'fusioninventory');
 
-
-//         $sopt[5163]['table']     = 'glpi_plugin_fusioninventory_configurationmanagements';
-//         $sopt[5163]['field']     = 'conform';
-//         $sopt[5163]['name']      = __('Conformité (configuration management)', 'fusioninventory');
-//         $sopt[5163]['joinparams']  = array('jointype' => 'itemtype_item');
-//         $sopt[5163]['massiveaction'] = FALSE;
-//         $sopt[5163]['datatype']  = 'bool';
          $sopt[5163]['table']     = 'glpi_plugin_fusioninventory_inventorycomputercomputers';
          $sopt[5163]['field']     = 'oscomment';
          $sopt[5163]['name']      = __('Operating system').'/'.__('Comments');
@@ -747,11 +740,11 @@ function plugin_fusioninventory_giveItem($type, $id, $data, $num) {
 
             case 'glpi_rules.id':
                $rule = new Rule();
-               $rule->getFromDB($data['raw']["ITEM_$num"]);
-               $out = "<a href='".$CFG_GLPI['root_doc']."/plugins/fusioninventory/front/inventoryruleimport.form.php?id=";
-               $out .= $data['raw']["ITEM_$num"]."'>".$rule->fields['name']."</a>";
-               return $out;
-
+               if ($rule->getFromDB($data['raw']["ITEM_$num"])) {
+                  $out = "<a href='".$CFG_GLPI['root_doc']."/plugins/fusioninventory/front/inventoryruleimport.form.php?id=";
+                  $out .= $data['raw']["ITEM_$num"]."'>".$rule->fields['name']."</a>";
+                  return $out;
+               }
          }
          break;
    }
@@ -843,11 +836,12 @@ function plugin_fusioninventory_install() {
    require_once (GLPI_ROOT . "/plugins/fusioninventory/install/update.php");
    $version_detected = pluginFusioninventoryGetCurrentVersion();
 
-   if (
+   if (!defined('FORCE_INSTALL')
+      &&
       isset($version_detected)
-      AND (
+      && (
          defined('FORCE_UPGRADE')
-         OR (
+         || (
             $version_detected!='0'
          )
       )) {
@@ -1920,30 +1914,41 @@ function plugin_pre_item_update_fusioninventory($parm) {
 /**
  * Manage pre-item purge an item
  *
- * @global object $DB
  * @param object $parm
  * @return object
  */
 function plugin_pre_item_purge_fusioninventory($parm) {
-   global $DB;
-
    $itemtype = get_class($parm);
+   $items_id = $parm->getID();
+
    switch ($itemtype) {
-
       case 'Computer':
-         // Delete link between computer and agent fusion
-         $query = "UPDATE `glpi_plugin_fusioninventory_agents`
-                     SET `computers_id` = '0'
-                     WHERE `computers_id` = '".$parm->getField('id')."'";
-         $DB->query($query);
+         $pfAgent        = new PluginFusioninventoryAgent;
+         $pfTaskjobstate = new PluginFusioninventoryTaskjobstate;
+         if ($agent_id = $pfAgent->getAgentWithComputerid($items_id)) {
+            // count associated tasks to the agent
+            $states = $pfTaskjobstate->find("`plugin_fusioninventory_agents_id` = $agent_id", "", 1);
+            if (count($states) > 0) {
+               // Delete link between computer and agent fusion
+               $pfAgent->update([
+                  'id'           => $agent_id,
+                  'computers_id' => 0],
+               true);
+            } else {
+               // no task associated, purge also agent
+               $pfAgent->delete(['id' => $agent_id], true);
+            }
+         }
 
-         $clean = array('PluginFusioninventoryInventoryComputerComputer',
-                        'PluginFusioninventoryComputerLicenseInfo',
-                        'PluginFusioninventoryCollect_File_Content',
-                        'PluginFusioninventoryCollect_Registry_Content',
-                        'PluginFusioninventoryCollect_Wmi_Content');
+         $clean = [
+            'PluginFusioninventoryInventoryComputerComputer',
+            'PluginFusioninventoryComputerLicenseInfo',
+            'PluginFusioninventoryCollect_File_Content',
+            'PluginFusioninventoryCollect_Registry_Content',
+            'PluginFusioninventoryCollect_Wmi_Content'
+         ];
          foreach ($clean as $obj) {
-            $obj::cleanComputer($parm->getID());
+            $obj::cleanComputer($items_id);
          }
          break;
 
@@ -1966,9 +1971,9 @@ function plugin_pre_item_purge_fusioninventory($parm) {
    }
 
    $rule = new PluginFusioninventoryRulematchedlog();
-   $rule->deleteByCriteria(array('itemtype' => $itemtype, 'items_id' => $parm->getID()));
+   $rule->deleteByCriteria(array('itemtype' => $itemtype, 'items_id' => $items_id));
 
-   PluginFusioninventoryLock::cleanForAsset($itemtype, $parm->getID());
+   PluginFusioninventoryLock::cleanForAsset($itemtype, $items_id);
    return $parm;
 }
 
@@ -2257,20 +2262,34 @@ function plugin_fusioninventory_getDatabaseRelations() {
       return array("glpi_locations"
                         => array('glpi_plugin_fusioninventory_deploymirrors' => 'locations_id'),
                    "glpi_entities"
-                        => array("glpi_plugin_fusioninventory_agents"               => "entities_id",
-                                 "glpi_plugin_fusioninventory_collects"             => "entities_id",
-                                 "glpi_plugin_fusioninventory_credentialips"        => "entities_id",
-                                 "glpi_plugin_fusioninventory_credentials"          => "entities_id",
-                                 "glpi_plugin_fusioninventory_deployfiles"          => "entities_id",
-                                 "glpi_plugin_fusioninventory_deploymirrors"        => "entities_id",
-                                 "glpi_plugin_fusioninventory_deploypackages"       => "entities_id",
-                                 "glpi_plugin_fusioninventory_ignoredimportdevices" => "entities_id",
-                                 "glpi_plugin_fusioninventory_ipranges"             => "entities_id",
-                                 "glpi_plugin_fusioninventory_tasks"                => "entities_id",
-                                 "glpi_plugin_fusioninventory_timeslotentries"      => "entities_id",
-                                 "glpi_plugin_fusioninventory_timeslots"            => "entities_id",
-                                 "glpi_plugin_fusioninventory_unmanageds"           => "entities_id"));
-
+                        => array("glpi_plugin_fusioninventory_agents"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_collects"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_credentialips"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_credentials"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_deployfiles"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_deploymirrors"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_deploypackages"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_ignoredimportdevices"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_ipranges"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_tasks"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_timeslotentries"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_timeslots"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_deployuserinteractiontemplates"
+                                    => "entities_id",
+                                 "glpi_plugin_fusioninventory_unmanageds"
+                                    => "entities_id"));
    }
    return array();
 }

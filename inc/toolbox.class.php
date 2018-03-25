@@ -481,11 +481,6 @@ class PluginFusioninventoryToolbox {
     */
    static function displaySerializedValues($array) {
 
-//      TODO: to fix in 0.85
-//      if ($_POST['glpi_tab'] == -1) { // tab all
-//         return;
-//      }
-
       foreach ($array as $key=>$value) {
          echo "<tr class='tab_bg_1'>";
          echo "<th>";
@@ -790,11 +785,15 @@ class PluginFusioninventoryToolbox {
       $config = new PluginFusioninventoryConfig();
       switch ($type) {
          case 'computer':
-            $input['states_id'] = $config->getValue("states_id_default");
+            if ($states_id_default = $config->getValue("states_id_default")) {
+               $input['states_id'] = $states_id_default;
+            }
             break;
 
          case 'snmp':
-            $input['states_id'] = $config->getValue("states_id_snmp_default");
+            if ($states_id_snmp_default = $config->getValue("states_id_snmp_default")) {
+               $input['states_id'] = $states_id_snmp_default;
+            }
             break;
 
          default:
@@ -804,4 +803,29 @@ class PluginFusioninventoryToolbox {
       return $input;
    }
 
+   /**
+    * Add a location if required by a rule
+    * @since 9.2+2.0
+    *
+    * @param array $input fields of the asset being inventoried
+    * @param array $output output array in which the location should be added (optionnal)
+    * @return array the fields with the locations_id filled, is necessary
+    */
+   static function addLocation($input, $output = false) {
+      //manage location
+      $ruleLocation = new PluginFusioninventoryInventoryRuleLocationCollection();
+
+      // * Reload rules (required for unit tests)
+      $ruleLocation->getCollectionPart();
+
+      $dataLocation = $ruleLocation->processAllRules($input);
+      if (isset($dataLocation['locations_id'])) {
+         if ($output) {
+            $output['locations_id'] = $dataLocation['locations_id'];
+         } else {
+            $input['locations_id'] = $dataLocation['locations_id'];
+         }
+      }
+      return ($output?$output:$input);
+   }
 }

@@ -123,6 +123,7 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       $input['component_control']      = 1;
       $input['component_removablemedia'] = 0;
       $input['component_powersupply']  = 1;
+      $input['component_simcard']      = 1;
       $input['states_id_default']      = 0;
       $input['states_id_snmp_default'] = 0;
       $input['location']               = 0;
@@ -153,6 +154,8 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       $input['server_as_mirror']      = 1;
       $input['manage_osname']         = 1;
       $input['clean_on_demand_tasks'] = -1;
+
+      $input['reprepare_job']         = 0;
 
       if (!$getOnly) {
          $this->addValues($input);
@@ -376,7 +379,11 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       echo "<td>";
       Dropdown::showYesNo("extradebug", $this->isFieldActive('extradebug'));
       echo "</td>";
-      echo "<td colspan=2></td>";
+
+      echo "<td>".__('Re-prepare successfull jobs', 'fusioninventory')."</td>";
+      echo "<td>";
+      Dropdown::showYesNo("reprepare_job", $this->isFieldActive('reprepare_job'));
+      echo "</td>";
       echo "</tr>";
 
       echo "<tr class='tab_bg_1'>";
@@ -712,6 +719,17 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       Dropdown::showYesNo("component_powersupply",
                           $pfConfig->getValue('component_powersupply'));
       echo "</td>";
+      echo "</tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td>";
+      echo _n('Simcard', 'Simcards', 2);
+      echo "</td>";
+      echo "<td>";
+      Dropdown::showYesNo("component_simcard",
+                          $pfConfig->getValue('component_simcard'));
+      echo "</td>";
+
       echo "</tr>";
 
       $options['candel'] = false;

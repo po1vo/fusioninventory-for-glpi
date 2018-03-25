@@ -134,6 +134,7 @@ class PluginFusioninventoryMenu extends CommonGLPI {
           'deploypackage'              => 'PluginFusioninventoryDeployPackage',
           'deploymirror'               => 'PluginFusioninventoryDeployMirror',
           'deploygroup'                => 'PluginFusioninventoryDeployGroup',
+          'deployuserinteractiontemplate' => 'PluginFusioninventoryDeployUserinteractionTemplate',
           'ignoredimportdevice'        => 'PluginFusioninventoryIgnoredimportdevice'
       );
       $options = array();
@@ -328,7 +329,7 @@ class PluginFusioninventoryMenu extends CommonGLPI {
       }
 
       if (Session::haveRight('plugin_fusioninventory_ignoredimportdevice', READ)) {
-         $a_menu[2]['name'] = __('Ignored import devices', 'fusioninventory');
+         $a_menu[2]['name'] = __('Asset skipped during import', 'fusioninventory');
          $a_menu[2]['pic']  = $CFG_GLPI['root_doc']."/plugins/fusioninventory/pics/menu_rules.png";
          $a_menu[2]['link'] = Toolbox::getItemTypeSearchURL(
                     'PluginFusioninventoryIgnoredimportdevice'
@@ -343,7 +344,7 @@ class PluginFusioninventoryMenu extends CommonGLPI {
       }
 
       if (Session::haveRight('plugin_fusioninventory_rulelocation', READ)) {
-         $a_menu[4]['name'] = __('Computer location rules', 'fusioninventory');
+         $a_menu[4]['name'] = __('Location rules', 'fusioninventory');
          $a_menu[4]['pic']  = $CFG_GLPI['root_doc']."/plugins/fusioninventory/pics/menu_rules.png";
          $a_menu[4]['link'] = $CFG_GLPI['root_doc'].
                                  "/plugins/fusioninventory/front/inventoryrulelocation.php";
@@ -465,6 +466,13 @@ class PluginFusioninventoryMenu extends CommonGLPI {
          $a_menu[1]['name'] = __('Mirror servers', 'fusioninventory');
          $a_menu[1]['pic']  = $CFG_GLPI['root_doc']."/plugins/fusioninventory/pics/menu_files.png";
          $a_menu[1]['link'] = $CFG_GLPI['root_doc']."/plugins/fusioninventory/front/deploymirror.php";
+      }
+
+      if (Session::haveRight('plugin_fusioninventory_userinteractiontemplate', READ)) {
+         $a_menu[2]['name'] = _n('User interaction template',
+                                 'User interaction templates', 2, 'fusioninventory');
+         $a_menu[2]['pic']  = $CFG_GLPI['root_doc']."/plugins/fusioninventory/pics/menu_files.png";
+         $a_menu[2]['link'] = $CFG_GLPI['root_doc']."/plugins/fusioninventory/front/deployuserinteractiontemplate.php";
       }
 
       if (!empty($a_menu)) {
@@ -931,6 +939,9 @@ class PluginFusioninventoryMenu extends CommonGLPI {
       // Number of computer inventories in last hour, 6 hours, 24 hours
       $dataInventory = PluginFusioninventoryInventoryComputerStat::getLastHours();
 
+      /*
+       * As of #2412 - temporarily removing this
+       *
       // Deploy
       $restrict_entity = getEntitiesRestrictRequest(" AND", 'glpi_plugin_fusioninventory_taskjobs');
       $query = "SELECT `plugin_fusioninventory_tasks_id`
@@ -980,13 +991,18 @@ class PluginFusioninventoryMenu extends CommonGLPI {
       for ($k=0; $k<4; $k++) {
          $dataDeploy[$k]['key'] .= " : ".$dataDeploy[$k]['y'];
       }
+       */
 
 
       echo "<div class='fi_board'>";
       self::showChart('computers', $dataComputer);
       self::showChartBar('nbinventory', $dataInventory,
                          __('Number of computer inventories of last hours', 'fusioninventory'));
+      /*
+       * As of #2412 - temporarily removing this
+       *
       self::showChart('deploy', $dataDeploy, __('Deployment', 'fusioninventory'));
+      */
       self::showChart('snmp', $dataSNMP);
       self::showChart('ports', $dataPortL);
       self::showChart('portsconnected', $dataPortC);

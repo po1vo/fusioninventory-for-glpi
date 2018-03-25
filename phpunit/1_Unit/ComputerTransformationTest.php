@@ -139,6 +139,7 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
           'batteries'      => array(),
           'remote_mgmt'    => array(),
           'powersupply'    => array(),
+          'simcard'        => array(),
           );
       $a_reference['Computer'] = array(
           'name'                             => 'pc',
@@ -226,6 +227,7 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
           'batteries'      => array(),
           'remote_mgmt'    => array(),
           'powersupply'    => array(),
+          'simcard'        => array()
           );
       $a_reference['Computer'] = array(
           'name'                             => 'pc',
@@ -331,6 +333,7 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
           'batteries'      => array(),
           'remote_mgmt'    => array(),
           'powersupply'    => array(),
+          'simcard'        => array()
           );
       $a_reference['Computer'] = array(
           'name'                             => 'vbox-winxp',
@@ -1046,6 +1049,7 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
           'batteries'      => array(),
           'remote_mgmt'    => array(),
           'powersupply'    => array(),
+          'simcard'        => array()
           );
       $a_reference['Computer'] = array(
           'name'                             => 'vbox-winxp',
@@ -1375,7 +1379,8 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
               'manufacturers_id' => 'Dell Inc.',
               'serial'           => '',
               'designation'      => 'Dell Inc. BIOS'
-          )
+          ),
+          'simcard'       => array()
           );
       $a_reference['Computer'] = array(
           'name'                             => 'vbox-winxp',
@@ -1491,7 +1496,8 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
               'manufacturers_id' => 'Dell Inc.',
               'serial'           => '',
               'designation'      => 'Dell Inc. BIOS'
-          )
+          ),
+          'simcard'        => array()
           );
       $a_reference['Computer'] = array(
           'name'                             => 'vbox-winxp',
@@ -1625,9 +1631,30 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
             'SPEED'        => '1000',
             'STATUS'       => 'Up',
             'WWN'          => '220000144f3eb274',
+         ),
+         2 => array(
+            'DESCRIPTION'  => 'Intel(R) Ethernet Connection (4) I219-LM',
+            'MACADDR'      => 'D4:81:D7:D6:12:87',
+            'PCIID'        => '8086:15D7:079F:1028',
+            'PNPDEVICEID'  => 'PCI\VEN_8086&amp;DEV_15D7&amp;SUBSYS_079F1028&amp;REV_21\3&amp;11583659&amp;0&amp;FE',
+            'SPEED'        => '9223372036854.78',
+            'STATUS'       => 'Down',
+            'TYPE'         => 'Ethernet',
+            'VIRTUALDEV'   => '0',
          )
       );
-
+      /* Last information from this agent log:
+       *     <NETWORKS>
+            <DESCRIPTION>Intel(R) Ethernet Connection (4) I219-LM</DESCRIPTION>
+            <MACADDR>D4:81:D7:D6:12:87</MACADDR>
+            <PCIID>8086:15D7:079F:1028</PCIID>
+            <PNPDEVICEID>PCI\VEN_8086&amp;DEV_15D7&amp;SUBSYS_079F1028&amp;REV_21\3&amp;11583659&amp;0&amp;FE</PNPDEVICEID>
+            <SPEED>9223372036854.78</SPEED>
+            <STATUS>Down</STATUS>
+            <TYPE>ethernet</TYPE>
+            <VIRTUALDEV>0</VIRTUALDEV>
+          </NETWORKS>
+       */
       $pfFormatconvert = new PluginFusioninventoryFormatconvert();
 
       $a_return = $pfFormatconvert->computerInventoryTransformation($a_computer);
@@ -1661,7 +1688,22 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
             'dhcpserver'         => '',
             'logical_number'     => 1,
             'ipaddress'          => [],
-         )
+         ),
+         'Intel(R) Ethernet Connection (4) I219-LM-d4:81:d7:d6:12:87' => array(
+            'name'               => 'Intel(R) Ethernet Connection (4) I219-LM',
+            'mac'                => 'd4:81:d7:d6:12:87',
+            'instantiation_type' => 'NetworkPortEthernet',
+            'ipaddress'          => array(),
+            'virtualdev'         => 0,
+            'subnet'             => '',
+            'ssid'               => '',
+            'gateway'            => '',
+            'netmask'            => '',
+            'dhcpserver'         => '',
+            'speed'              => 0,
+            'logical_number'     => 1,
+            'wwn'                => ''
+         ),
       );
       $this->assertEquals($a_reference, $a_return['networkport']);
    }
@@ -1969,7 +2011,8 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
               'manufacturers_id' => 'Dell Inc.',
               'serial'           => '',
               'designation'      => 'Dell Inc. BIOS'
-          )
+          ),
+          'simcard'        => array()
           );
       $a_reference['Computer'] = array(
           'name'                             => 'vbox-winxp',
@@ -2061,5 +2104,18 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
       );
 
       $this->assertEquals($a_reference, $a_return['powersupply']);
+   }
+
+   function testIsANetworkDevice() {
+      $drive = ['FREE' => '3332501',
+                'TOTAL' =>'19066219',
+                'TYPE' => '/Volume/MyNetworkshare'
+      ];
+      $pfFormatconvert = new PluginFusioninventoryFormatconvert();
+      foreach (['afpfs' => true, 'nfs' => true, 'smbfs' => true,
+                'ext4' => false, 'fat32' => false] as $fs => $result) {
+         $drive['FILESYSTEM'] = $fs;
+         $this->assertEquals($result, $pfFormatconvert->isANetworkDrive($drive));
+      }
    }
 }

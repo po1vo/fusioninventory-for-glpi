@@ -291,21 +291,6 @@ class PluginFusioninventoryInventoryComputerInventory {
             $input['domains_id'] = $a_computerinventory['Computer']['domains_id'];
          }
 
-         // TODO
-//         if (isset($arrayinventory['CONTENT']['STORAGES'])) {
-//            foreach ($arrayinventory['CONTENT']['STORAGES'] as $storage) {
-//               if ((isset($storage['SERIALNUMBER'])) AND (!empty($storage['SERIALNUMBER']))) {
-//                  $input['partitionserial'][] = $storage['SERIALNUMBER'];
-//               }
-//            }
-//         }
-//         if (isset($arrayinventory['CONTENT']['computerdisk'])) {
-//            foreach ($arrayinventory['CONTENT']['DRIVES'] as $drive) {
-//               if ((isset($drive['SERIAL'])) AND (!empty($drive['SERIAL']))) {
-//                  $input['hdserial'][] = $drive['SERIAL'];
-//               }
-//            }
-//         }
          $input['tag'] = $tagAgent;
 
          if ((isset($a_computerinventory['Computer']['name']))
@@ -359,15 +344,13 @@ class PluginFusioninventoryInventoryComputerInventory {
       $_SESSION['plugin_fusioninventory_classrulepassed'] =
                      "PluginFusioninventoryInventoryComputerInventory";
 
-      $ruleLocation = new PluginFusioninventoryInventoryRuleLocationCollection();
 
-      // * Reload rules (required for unit tests)
-      $ruleLocation->getCollectionPart();
-
-      $dataLocation = $ruleLocation->processAllRules($input, array());
-      if (isset($dataLocation['locations_id'])) {
+      //Add the location if needed (play rule locations engine)
+      $output = [];
+      $output = PluginFusioninventoryToolbox::addLocation($input, $output);
+      if (isset($output['locations_id'])) {
          $_SESSION['plugin_fusioninventory_locations_id'] =
-               $dataLocation['locations_id'];
+               $output['locations_id'];
       }
 
       $rule = new PluginFusioninventoryInventoryRuleImportCollection();
