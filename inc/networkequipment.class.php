@@ -157,7 +157,7 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
       }
 
       if (!isset($_SESSION['plugin_fusioninventory_networkportview'])) {
-         $_SESSION['plugin_fusioninventory_networkportview'] = 'fusioninventory';
+         $_SESSION['plugin_fusioninventory_networkportview'] = 'Badoo';
       }
 
       // Display glpi network port view if no fusionnetworkport
@@ -175,14 +175,27 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
 
       echo "<form action='".$CFG_GLPI['root_doc'].
          "/plugins/fusioninventory/front/networkport.display.php' method='post'>";
-      echo __('Display the view', 'fusioninventory');
+      echo __('The view is', 'fusioninventory');
       echo ' <i>'.$_SESSION['plugin_fusioninventory_networkportview']."</i>. ";
-      echo __('If you prefer, you can display the view', 'fusioninventory');
+      echo __('Options:', 'fusioninventory');
       echo ' ';
-      if ($_SESSION['plugin_fusioninventory_networkportview'] == 'fusioninventory') {
-         echo '<input type="submit" class="submit" name="selectview" value="glpi" />';
-      } else {
-         echo '<input type="submit" class="submit" name="selectview" value="fusioninventory" />';
+
+      switch($_SESSION['plugin_fusioninventory_networkportview']) {
+         case "fusioninventory":
+            echo '<input type="submit" class="submit" name="selectview" value="glpi" />';
+            echo ' ';
+            echo '<input type="submit" class="submit" name="selectview" value="Badoo" />';
+            break;
+         case "Badoo":
+            echo '<input type="submit" class="submit" name="selectview" value="glpi" />';
+            echo ' ';
+            echo '<input type="submit" class="submit" name="selectview" value="fusioninventory" />';
+            break;
+         case "glpi":
+            echo '<input type="submit" class="submit" name="selectview" value="fusioninventory" />';
+            echo ' ';
+            echo '<input type="submit" class="submit" name="selectview" value="Badoo" />';
+            break;
       }
       Html::closeForm();
 
@@ -249,6 +262,24 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
       if (count($a_aggregated_ports) > 0) {
          $where = "AND `glpi_networkports`.`id` NOT IN ".
                      "('".implode("', '", $a_aggregated_ports)."')";
+      }
+
+      if ($_SESSION['plugin_fusioninventory_networkportview'] == 'Badoo') {
+         $ifdescr_excludes = ["bme","jsrv","em","irb","me","pfe","pfh","vcp","Stack"];
+         $where .= " AND `ifdescr` NOT REGEXP '^(" . implode('|', $ifdescr_excludes) . ")'";
+
+         $model = new NetworkEquipmentModel();
+         $model->getFromDB($item->fields["networkequipmentmodels_id"]);
+         $model_name = $model->fields["name"];
+
+         // if Juniper QFX
+         if (preg_match("/^qfx/i", $model_name)) {
+            $where .= " AND `ifdescr` NOT REGEXP '\\\\.[0-9]+$'";
+            $where .= " AND NOT (`ifdescr` LIKE 'ae%' AND `ifstatus` = 2)";
+         // if Juniper EX
+         } else if (preg_match("/^ex\d+/i", $model_name)) {
+            $where .= " AND `ifdescr` NOT REGEXP '^[gx]e-[0-9]/[0-9]/[0-9]+$'";
+         }
       }
 
       $query = "SELECT `glpi_networkports`.`id`, `instantiation_type`,
@@ -335,6 +366,29 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
          }
       }
       echo "</table>";
+
+      if ($_SESSION['plugin_fusioninventory_networkportview'] == 'Badoo') {
+         $names = [];
+         foreach($this->fields["ifstatus"] as $k => $v) {
+            if (!preg_match("/^([[:alpha:]]+)(?: |-|\d)/", $k, $matches))
+               continue;
+
+            $name = $matches[1];
+            $names[$name][$v]++;
+         }
+
+         if (!empty($names)) {
+            echo "<table style='margin: 0 auto; font-size: 100%; padding-top: 1em;'>";
+            echo "<tr><th style='padding:0 1em;'>Type</th><th style='padding:0 1em;'>".
+               "Online</th><th style='padding:0 1em;'>Offline</th></tr>";
+
+            foreach ($names as $k => $v)
+               echo "<tr><td>".$k."</td><td>".$v[1]."</td><td>".$v[2]."</td></tr>";
+
+            echo "</table>";
+         }
+      }
+
       if ($monitoring == '1') {
          if (Session::haveRight("plugin_monitoring_componentscatalog", UPDATE)) {
             Html::closeForm();
@@ -967,6 +1021,8 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
                           "/plugins/fusioninventory/pics/orangebutton.png'/>";
                }
                echo "</td>";
+               if ($_SESSION['plugin_fusioninventory_networkportview'] == 'Badoo')
+                  $this->fields["ifstatus"][$pfNetworkPort->fields["ifdescr"]] = $pfNetworkPort->fields["ifstatus"];
                break;
 
             case 12:
