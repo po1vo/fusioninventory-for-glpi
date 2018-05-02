@@ -62,6 +62,8 @@ define("PLUGIN_FUSIONINVENTORY_REPOSITORY_DIR",
        GLPI_PLUGIN_DOC_DIR."/fusioninventory/files/repository/");
 define("PLUGIN_FUSIONINVENTORY_MANIFESTS_DIR",
        GLPI_PLUGIN_DOC_DIR."/fusioninventory/files/manifests/");
+define("PLUGIN_FUSIONINVENTORY_XML_DIR",
+       GLPI_PLUGIN_DOC_DIR."/fusioninventory/xml/");
 
 /**
  * Check if the script name finish by
@@ -287,7 +289,7 @@ function plugin_init_fusioninventory() {
          array_push(
             $PLUGIN_HOOKS['add_javascript']['fusioninventory'],
             "lib/lazy.js-0.4.0/lazy".($debug_mode?"":".min").".js",
-            "lib/mustache.js-2.0.0/mustache".($debug_mode?"":".min").".js",
+            "lib/mustache.js-2.3.0/mustache".($debug_mode?"":".min").".js",
             "js/taskjobs".($debug_mode || !file_exists('js/taskjobs.min.js')?"":".min").".js"
          );
       }

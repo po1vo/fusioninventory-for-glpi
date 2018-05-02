@@ -198,15 +198,17 @@ class PluginFusioninventoryMenu extends CommonGLPI {
       global $CFG_GLPI;
 
       if (PLUGIN_FUSIONINVENTORY_OFFICIAL_RELEASE != 1) {
-         echo "<center>";
-         echo "<a href='http://forge.fusioninventory.org/projects/fusioninventory-for-glpi/".
-                 "wiki/Beta_test'>";
-         echo "<img src='".$CFG_GLPI['root_doc']."/plugins/fusioninventory/pics/beta.png'/></a>";
-         echo "&nbsp;<a href='https://www.transifex.com/projects/p/FusionInventory/resource/".
-                 "plugin-fusioninventory-92/'>";
-         echo "<img src='".$CFG_GLPI['root_doc']."/plugins/fusioninventory/pics/Translate.png'/>".
-                 "</a>";
-         echo "<H1>Version '".PLUGIN_FUSIONINVENTORY_REALVERSION."'</H1></center><br/>\n";
+         echo "<div class='beta'>
+               <i class='fa fa-exclamation-triangle fa-5x'></i>
+               <a href='http://forge.fusioninventory.org/projects/fusioninventory-for-glpi/wiki/Beta_test'>
+                  ".__('This is a beta version!')."
+               </a>
+               <a href='https://www.transifex.com/projects/p/FusionInventory/resource/plugin-fusioninventory-93' class='trans'>
+                  <i class='fa fa-flag-checkered fa-2x'></i><br/>
+                  ".__('Help us for translation')."
+               </a>
+            </div>";
+         echo "<h2>Version '".PLUGIN_FUSIONINVENTORY_REALVERSION."'</h2>\n";
       }
 
       $pfEntity = new PluginFusioninventoryEntity();
@@ -939,9 +941,6 @@ class PluginFusioninventoryMenu extends CommonGLPI {
       // Number of computer inventories in last hour, 6 hours, 24 hours
       $dataInventory = PluginFusioninventoryInventoryComputerStat::getLastHours();
 
-      /*
-       * As of #2412 - temporarily removing this
-       *
       // Deploy
       $restrict_entity = getEntitiesRestrictRequest(" AND", 'glpi_plugin_fusioninventory_taskjobs');
       $query = "SELECT `plugin_fusioninventory_tasks_id`
@@ -955,7 +954,9 @@ class PluginFusioninventoryMenu extends CommonGLPI {
          $a_tasks[] = $data['plugin_fusioninventory_tasks_id'];
       }
       $pfTask = new PluginFusioninventoryTask();
-      $data = $pfTask->getJoblogs($a_tasks);
+      // Do not get logs with the jobs states, this to avoid long request time
+      // and this is not useful on the plugin home page
+      $data = $pfTask->getJoblogs($a_tasks, $with_logs=false);
 
       $dataDeploy = array();
       $dataDeploy[0] = array(
@@ -991,18 +992,13 @@ class PluginFusioninventoryMenu extends CommonGLPI {
       for ($k=0; $k<4; $k++) {
          $dataDeploy[$k]['key'] .= " : ".$dataDeploy[$k]['y'];
       }
-       */
 
 
       echo "<div class='fi_board'>";
       self::showChart('computers', $dataComputer);
       self::showChartBar('nbinventory', $dataInventory,
                          __('Number of computer inventories of last hours', 'fusioninventory'));
-      /*
-       * As of #2412 - temporarily removing this
-       *
       self::showChart('deploy', $dataDeploy, __('Deployment', 'fusioninventory'));
-      */
       self::showChart('snmp', $dataSNMP);
       self::showChart('ports', $dataPortL);
       self::showChart('portsconnected', $dataPortC);
