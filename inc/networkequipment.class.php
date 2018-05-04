@@ -173,7 +173,7 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
          return;
       }
 
-      echo "<form action='".$CFG_GLPI['root_doc'].
+      echo "<form style='display: inline-block;' action='".$CFG_GLPI['root_doc'].
          "/plugins/fusioninventory/front/networkport.display.php' method='post'>";
       echo __('The view is', 'fusioninventory');
       echo ' <i>'.$_SESSION['plugin_fusioninventory_networkportview']."</i>. ";
@@ -198,6 +198,21 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
             break;
       }
       Html::closeForm();
+
+      $img = " <img alt=\"".__s('Select default items to show')."\" title=\"".
+                          __s('Select default items to show')."\" src='".
+                          $CFG_GLPI["root_doc"]."/pics/options_search.png' ";
+      $img .= " style='vertical-align: middle;'";
+      $img .= " class='pointer' onClick=\"";
+      $img .= Html::jsGetElementbyID('search_config_top').
+                                             ".dialog('open');\">";
+      $img .= Ajax::createIframeModalWindow('search_config_top',
+				  $CFG_GLPI["root_doc"].
+				     "/front/displaypreference.form.php?itemtype=PluginFusioninventoryNetworkPort",
+				  array('title' => __('Select default items to show'),
+					'reloadonclose' => true,
+					'display' => false));
+      echo $img;
 
       if ($_SESSION['plugin_fusioninventory_networkportview'] == 'glpi') {
          NetworkPort::showForItem($item);
@@ -369,12 +384,27 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
 
       if ($_SESSION['plugin_fusioninventory_networkportview'] == 'Badoo') {
          $names = [];
+
+         if (preg_match("/^qfx/i", $model_name)) // if Juniper QFX
+            $re = "/^([[:alpha:]]+)\-(\d)\/\d\/\d+$/";
+         else
+            $re = "/^([[:alpha:]]+)(?: |-|\d)/";
+
+         $hash = [];
          foreach($this->fields["ifstatus"] as $k => $v) {
-            if (!preg_match("/^([[:alpha:]]+)(?: |-|\d)/", $k, $matches))
+            if (!preg_match($re, $k, $matches))
                continue;
 
             $name = $matches[1];
             $names[$name][$v]++;
+
+            if(array_key_exists(2, $matches)) // Juniper QFX only
+               $hash[$name][$matches[2]] = 1;
+         }
+
+         foreach($hash as $k => $v) { // Juniper QFX only
+            $total_ports = count($v) * 48;
+            $names[$k][2] = $total_ports - $names[$k][1];
          }
 
          if (!empty($names)) {
@@ -600,12 +630,15 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
       $a_pref = DisplayPreference::getForTypeUser('PluginFusioninventoryNetworkport',
                                                   Session::getLoginUserID());
 
+/*
       echo "<tr class='tab_bg_1'>";
 
       echo "<th colspan='".(count($a_pref) + 3)."'>";
       echo __('Ports array', 'fusioninventory');
+*/
 
       $result = $DB->query($query);
+/*
       echo ' ('.$DB->numrows($result).')';
 
       $tmp = " class='pointer' onClick=\"";
@@ -658,6 +691,7 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
          </td>
       </tr>";
       echo "<script>Ext.get('legend').setVisibilityMode(Ext.Element.DISPLAY);</script>";
+*/
 
       echo "<tr class='tab_bg_1'>";
 
