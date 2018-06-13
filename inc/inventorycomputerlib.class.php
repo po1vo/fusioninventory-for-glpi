@@ -1861,7 +1861,9 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
       $deviceBios       = new DeviceFirmware();
 
       $fwTypes = new DeviceFirmwareType();
-      $fwTypes->getFromDBByQuery("WHERE `name` = 'BIOS'");
+      $fwTypes->getFromDBByCrit([
+         'name' => 'BIOS'
+      ]);
       $type_id = $fwTypes->getID();
       $data['devicefirmwaretypes_id'] = $type_id;
 
@@ -2558,6 +2560,8 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
       *
       */
 
+      $dbLock = new PluginFusioninventoryDBLock();
+
       if (count($db_software) == 0) { // there are no software associated with computer
          $nb_unicity = count(FieldUnicity::getUnicityFieldsConfig("Software", $entities_id));
          $options    = [];
@@ -2574,18 +2578,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
          //Step 1 : import softwares
          //-----------------------------------
          //Put a lock during software import for this computer
-         $queryDBLOCK = $DB->buildInsert(
-            'glpi_plugin_fusioninventory_dblocksoftwares', [
-            'value' => 1
-            ]
-         );
-         $CFG_GLPI["use_log_in_files"] = false;
-         //If the lock is already in place : another software import is running
-         //loop until lock release!
-         while (!$DB->query($queryDBLOCK)) {
-            usleep(100000);
-         }
-         $CFG_GLPI["use_log_in_files"] = true;
+         $dbLock->setLock('softwares');
          $this->loadSoftwares($entities_id,
                               $a_inventory['software'],
                               $lastSoftwareid);
@@ -2597,13 +2590,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                $this->addSoftware($a_software, $options);
             }
          }
-
-         //Release the lock
-         $DB->delete(
-             'glpi_plugin_fusioninventory_dblocksoftwares', [
-                 'value' => 1
-             ]
-           );
+         $dbLock->releaseLock('softwares');
 
          //-----------------------------------
          //Step 2 : import software versions
@@ -2611,16 +2598,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
          $lastSoftwareVid = $this->loadSoftwareVersions($entities_id,
                                         $a_inventory['software'],
                                         $lastSoftwareVid);
-         $queryDBLOCK = $DB->buildInsert(
-             'glpi_plugin_fusioninventory_dblocksoftwareversions', [
-             'value' => 1
-             ]
-         );
-         $CFG_GLPI["use_log_in_files"] = false;
-         while (!$DB->query($queryDBLOCK)) {
-            usleep(100000);
-         }
-         $CFG_GLPI["use_log_in_files"] = true;
+         $dbLock->setLock('softwareversions');
          $this->loadSoftwareVersions($entities_id,
                                      $a_inventory['software'],
                                      $lastSoftwareVid);
@@ -2633,11 +2611,8 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                $this->addSoftwareVersion($a_software, $softwares_id);
             }
          }
-         $DB->delete(
-               'glpi_plugin_fusioninventory_dblocksoftwareversions', [
-                  'value' => 1
-               ]
-         );
+         $dbLock->releaseLock('softwareversions');
+
          $a_toinsert = [];
          foreach ($a_inventory['software'] as $a_software) {
             $softwares_id = $this->softList[$a_software['name']
@@ -2715,10 +2690,8 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             }
          }
 
-         if (count($a_inventory['software']) == 0
-            && count($db_software) == 0) {
-            // Nothing to do
-         } else {
+         if (count($a_inventory['software']) > 0
+            || count($db_software) > 0) {
             if (count($db_software) > 0) {
                // Delete softwares in DB
                foreach ($db_software as $idtmp) {
@@ -2759,16 +2732,8 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                   $options['disable_unicity_check'] = true;
                }
                $lastSoftwareid = $this->loadSoftwares($entities_id, $a_inventory['software'], $lastSoftwareid);
-               $queryDBLOCK = $DB->buildInsert(
-                  'glpi_plugin_fusioninventory_dblocksoftwares', [
-                  'value' => 1
-                  ]
-               );
-               $CFG_GLPI["use_log_in_files"] = false;
-               while (!$DB->query($queryDBLOCK)) {
-                  usleep(100000);
-               }
-               $CFG_GLPI["use_log_in_files"] = true;
+
+               $dbLock->setLock('softwares');
                $this->loadSoftwares($entities_id, $a_inventory['software'], $lastSoftwareid);
                foreach ($a_inventory['software'] as $a_software) {
                   if (!isset($this->softList[$a_software['name']."$$$$".
@@ -2777,25 +2742,12 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                                         $options);
                   }
                }
-               $DB->delete(
-                  'glpi_plugin_fusioninventory_dblocksoftwares', [
-                  'value' => 1
-                  ]
-               );
+               $dbLock->releaseLock('softwares');
 
                $lastSoftwareVid = $this->loadSoftwareVersions($entities_id,
                                               $a_inventory['software'],
                                               $lastSoftwareVid);
-               $queryDBLOCK = $DB->buildInsert(
-                  'glpi_plugin_fusioninventory_dblocksoftwareversions', [
-                  'value' => 1
-                  ]
-               );
-               $CFG_GLPI["use_log_in_files"] = false;
-               while (!$DB->query($queryDBLOCK)) {
-                  usleep(100000);
-               }
-               $CFG_GLPI["use_log_in_files"] = true;
+               $dbLock->setLock('softwareversions');
                $this->loadSoftwareVersions($entities_id,
                                            $a_inventory['software'],
                                            $lastSoftwareVid);
@@ -2805,11 +2757,8 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                      $this->addSoftwareVersion($a_software, $softwares_id);
                   }
                }
-               $DB->delete(
-                  'glpi_plugin_fusioninventory_dblocksoftwareversions', [
-                  'value' => 1
-                  ]
-               );
+               $dbLock->releaseLock('softwareversions');
+
                $a_toinsert = [];
                foreach ($a_inventory['software'] as $key => $a_software) {
                   //Check if historical has been disabled for this software only

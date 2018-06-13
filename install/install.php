@@ -67,6 +67,7 @@ function pluginFusioninventoryInstall($version, $migrationname = 'Migration') {
    require_once(GLPI_ROOT . '/plugins/fusioninventory/inc/taskjobview.class.php');
    require_once(GLPI_ROOT . '/plugins/fusioninventory/inc/taskview.class.php');
    require_once(GLPI_ROOT . '/plugins/fusioninventory/inc/deploypackageitem.class.php');
+   require_once(GLPI_ROOT . '/plugins/fusioninventory/inc/item.class.php');
    foreach (glob(GLPI_ROOT.'/plugins/fusioninventory/inc/*.php') as $file) {
       require_once($file);
    }
@@ -296,7 +297,7 @@ function pluginFusioninventoryInstall($version, $migrationname = 'Migration') {
                         ['mode'=>2, 'allowmode'=>3, 'logs_lifetime'=>30]);
    CronTask::Register('PluginFusioninventoryAgent', 'cleanoldagents', (3600 * 24),
                         ['mode' => 2, 'allowmode' => 3, 'logs_lifetime' => 30,
-                              'comment'=> Toolbox::addslashes_deep(__('Delete agent that have not contacted the server since xxx days".', 'fusioninventory'))]);
+                              'comment'=> Toolbox::addslashes_deep(__('Delete agents that have not contacted the server since "xxx" days.', 'fusioninventory'))]);
    CronTask::Register('PluginFusioninventoryAgentWakeup', 'wakeupAgents', 120,
                         ['mode'=>2, 'allowmode'=>3, 'logs_lifetime'=>30,
                               'comment'=> Toolbox::addslashes_deep(__('Wake agents ups', 'fusioninventory'))]);

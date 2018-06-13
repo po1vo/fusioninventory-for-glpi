@@ -66,10 +66,10 @@ class PluginFusioninventoryComputer extends Computer {
     *
     * @return array
     */
-   function getSearchOptions() {
+   function getSearchOptionsNew() {
       // Start with the base Glpi computer items
       $computer = new Computer();
-      $options  = $computer->getSearchOptions();
+      $options  = $computer->getSearchOptionsNew();
 
       // Add the network port items
       $options += NetworkPort::getSearchOptionsToAdd('Computer');
@@ -98,6 +98,11 @@ class PluginFusioninventoryComputer extends Computer {
    function getSpecificMassiveActions($checkitem = null) {
 
       $actions = [];
+      if (strstr(filter_input(INPUT_SERVER, "PHP_SELF"), '/report.dynamic.php')) {
+         // In case we export list (CSV, PDF...) we do not have massive actions.
+         return $actions;
+      }
+
       if (isset($_GET['id'])) {
          $id = $_GET['id'];
       } else {

@@ -250,6 +250,7 @@ function pluginFusioninventoryUpdate($current_version, $migrationname = 'Migrati
    require_once GLPI_ROOT.'/plugins/fusioninventory/inc/commonview.class.php';
    require_once GLPI_ROOT.'/plugins/fusioninventory/inc/taskview.class.php';
    require_once GLPI_ROOT.'/plugins/fusioninventory/inc/taskjobview.class.php';
+   require_once GLPI_ROOT.'/plugins/fusioninventory/inc/item.class.php';
 
    foreach (glob(GLPI_ROOT.'/plugins/fusioninventory/inc/*.php') as $file) {
       require_once($file);
@@ -938,7 +939,7 @@ function pluginFusioninventoryUpdate($current_version, $migrationname = 'Migrati
       CronTask::Register('PluginFusioninventoryAgent', 'cleanoldagents', 86400,
                          ['mode'=>2, 'allowmode'=>3, 'logs_lifetime'=>30,
                                'hourmin' =>22, 'hourmax'=>6,
-                               'comment'=>Toolbox::addslashes_deep(__('Delete agent that have not contacted the server since xxx days".', 'fusioninventory'))]);
+                               'comment'=>Toolbox::addslashes_deep(__('Delete agents that have not contacted the server since "xxx" days.', 'fusioninventory'))]);
    }
    if (!$crontask->getFromDBbyName('PluginFusioninventoryTask', 'cleanondemand')) {
       CronTask::Register('PluginFusioninventoryTask', 'cleanondemand', 86400,
@@ -1610,7 +1611,7 @@ function do_entities_migration($migration) {
          $DB->update(
             'glpi_plugin_fusioninventory_entities', [
                'agent_base_url' => $agent_base_url
-            ], []
+            ], [true]
          );
       }
    }
@@ -4097,7 +4098,7 @@ function do_printer_migration($migration) {
       * Modify displaypreference for PluginFusioninventoryPrinterLog
       */
       $pfPrinterLogReport = new PluginFusioninventoryPrinterLog();
-      $a_searchoptions = $pfPrinterLogReport->getSearchOptions();
+      $a_searchoptions = $pfPrinterLogReport->getSearchOptionsNew();
       $iterator2 = $DB->request([
          'FROM'   => 'glpi_displaypreferences',
          'WHERE'  => [
@@ -4136,7 +4137,14 @@ function do_printer_migration($migration) {
          }
       } else {
          while ($data=$DB->fetch_array($result)) {
-            if (!isset($a_searchoptions[$data['num']])) {
+            $delete = true;
+            foreach ($a_searchoptions as $searchoption) {
+               if ($searchoption['id'] == $data['num']) {
+                  $delete = false;
+                  continue;
+               }
+            }
+            if ($delete) {
                $DB->delete(
                   'glpi_displaypreferences', [
                      'id'  => $data['id']
@@ -4578,7 +4586,9 @@ function do_networkequipment_migration($migration) {
    if (count($iterator)) {
       $update = $DB->buildUpdate(
          'glpi_networkequipments', [
-            'id'  => new \QueryParam()
+            'is_dynamic'   => 1
+         ], [
+            'id'           => new \QueryParam()
          ]
       );
       $stmt = $DB->prepare($update);
@@ -4996,7 +5006,7 @@ function do_operatingsystemedition_migration($migration) {
       $ose = new OperatingSystemEdition();
       foreach (getAllDatasFromTable('glpi_plugin_fusioninventory_computeroperatingsystemeditions') as $edition) {
          //check if arch already exists in core
-         if ($ose->getFromDBByQuery(' WHERE name = "' . $DB->escape($edition['name']) . '"')) {
+         if ($ose->getFromDBByCrit(['name' => $DB->escape($edition['name'])])) {
             $new_id = $ose->fields['id'];
          } else {
             unset($edition['id']);
@@ -5050,10 +5060,10 @@ function do_operatingsystemkernel_migration($migration) {
          $key = "{$row['kid']}|{$row['kvid']}";
          if (!isset($mapping[$key])) {
             //find in db for an existing kernel name
-            if (!$kernels->getFromDBByQuery("WHERE name='" . $DB->escape($row['kname']). "'")) {
+            if (!$kernels->getFromDBByCrit(['name' => $DB->escape($row['kname'])])) {
                $kernels->add(['name' => $row['kname']]);
             }
-            if (!$kversions->getFromDBByQuery("WHERE name='" . $DB->escape($row['kversion']). "' AND operatingsystemkernels_id = " . $kernels->getID())) {
+            if (!$kversions->getFromDBByCrit(['name' => $DB->escape($row['kversion']), 'operatingsystemkernels_id' => $kernels->getID()])) {
                $kversions->add([
                   'name'                        => $row['kversion'],
                   'operatingsystemkernels_id'  => $kernels->getID()
