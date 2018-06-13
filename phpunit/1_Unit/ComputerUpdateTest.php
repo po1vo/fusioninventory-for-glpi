@@ -280,14 +280,14 @@ class ComputerUpdateTest extends RestoreDatabase_TestCase {
                'power'            => '750 W',
                'serial'           => 'CN716154CH13E7',
                'manufacturers_id' => 'DELL',
-               'is_atx'           => ''
+               'is_dynamic'       => 1,
             ],
             [
                'designation'      => '0HTRH4A01',
                'power'            => '750 W',
                'serial'           => 'CN716154CH1475',
                'manufacturers_id' => 'DELL',
-               'is_atx'           => ''
+               'is_dynamic'       => 1,
             ]
          ];
 

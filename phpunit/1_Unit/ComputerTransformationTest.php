@@ -2060,24 +2060,16 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
       ];
       $a_computer['POWERSUPPLIES'] = [
          [
-            'SERIAL'  => 'CN716154CH13E7',
-            'PARTNUM' => '0HTRH4A01',
-            'VENDOR'  => 'DELL',
-            'IS_ATX'  => 0
+            'SERIALNUMBER' => 'CN716154CH13E7',
+            'PARTNUM'      => '0HTRH4A01',
+            'POWER_MAX'    => '700 W',
+            'VENDOR'       => 'DELL',
          ],
          [
-            'SERIAL'  => 'CN716154CH13E7',
-            'PARTNUM' => '0HTRH4A01',
-            'POWER'   => '700 W',
-            'VENDOR'  => 'DELL',
-            'IS_ATX'  => 0
-         ],
-         [
-            'SERIAL'  => 'CN716154CH71A5',
-            'PARTNUM' => '0HTRH4A01',
-            'POWER'   => '700 W',
-            'VENDOR'  => 'DELL',
-            'IS_ATX'  => 0
+            'SERIAL'       => 'CN716154CH71A5',
+            'PARTNUM'      => '0HTRH4A01',
+            'POWER_MAX'    => '700 W',
+            'MANUFACTURER' => 'DELL',
          ]
       ];
 
@@ -2090,14 +2082,14 @@ class ComputerTransformation extends RestoreDatabase_TestCase {
             'designation'      => '0HTRH4A01',
             'power'            => '700 W',
             'manufacturers_id' => 'DELL',
-            'is_atx'           => ''
+            'is_dynamic'       => 1,
          ],
          [
             'serial'           => 'CN716154CH71A5',
             'designation'      => '0HTRH4A01',
             'power'            => '700 W',
             'manufacturers_id' => 'DELL',
-            'is_atx'           => ''
+            'is_dynamic'       => 1,
          ]
       ];
 

@@ -1472,32 +1472,17 @@ class PluginFusioninventoryFormatconvert {
       // * POWER SUPPLIES
       $a_inventory['powersupply'] = [];
       if (isset($array['POWERSUPPLIES'])) {
-         // merging partial information
-         $a_tmp = [];
-         foreach ($array['POWERSUPPLIES'] as $a_psu) {
-            if (!isset($a_psu['SERIAL']))
-               continue;
-
-            $sn = $a_psu['SERIAL'];
-
-            if (isset($a_tmp[$sn])) {
-               $a_tmp[$sn] = array_merge($a_tmp[$sn], $a_psu);
-            } else {
-               $a_tmp[$sn] = $a_psu;
-            }
-         }
-
-         foreach($a_tmp as $k => $v) {
+         foreach($array['POWERSUPPLIES'] as $a_psu) {
             $array_tmp = $thisc->addValues(
-               $v,
+               $a_psu,
                [
-                  'SERIAL'  => 'serial',
-                  'PARTNUM' => 'designation',
-                  'POWER'   => 'power',
-                  'IS_ATX'  => 'is_atx',
-                  'VENDOR'  => 'manufacturers_id'
+                  'SERIALNUMBER'  => 'serial',
+                  'PARTNUM'       => 'designation',
+                  'MANUFACTURER'  => 'manufacturers_id'
+                  'POWER_MAX'     => 'power'
                ]
             );
+            $array_tmp['is_dynamic'] = 1;
             $a_inventory['powersupply'][] = $array_tmp;
          }
       }
