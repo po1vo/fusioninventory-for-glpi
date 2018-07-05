@@ -237,6 +237,8 @@ function pluginFusioninventoryUpdate($current_version, $migrationname='Migration
    require_once GLPI_ROOT.'/plugins/fusioninventory/inc/taskview.class.php';
    require_once GLPI_ROOT.'/plugins/fusioninventory/inc/taskjobview.class.php';
    require_once GLPI_ROOT.'/plugins/fusioninventory/inc/item.class.php';
+   require_once GLPI_ROOT.'/plugins/fusioninventory/inc/collectcommon.class.php';
+   require_once GLPI_ROOT.'/plugins/fusioninventory/inc/collectcontentcommon.class.php';
 
    foreach (glob(GLPI_ROOT.'/plugins/fusioninventory/inc/*.php') as $file) {
       require_once($file);
@@ -896,7 +898,7 @@ function pluginFusioninventoryUpdate($current_version, $migrationname='Migration
       CronTask::Register('PluginFusioninventoryAgent', 'cleanoldagents', 86400,
                          array('mode'=>2, 'allowmode'=>3, 'logs_lifetime'=>30,
                                'hourmin' =>22, 'hourmax'=>6,
-                               'comment'=>Toolbox::addslashes_deep(__('Delete agent that have not contacted the server since xxx days".', 'fusioninventory'))));
+                               'comment'=>Toolbox::addslashes_deep(__('Delete agents that have not contacted the server since "xxx" days.', 'fusioninventory'))));
    }
    if (!$crontask->getFromDBbyName('PluginFusioninventoryTask', 'cleanondemand')) {
       CronTask::Register('PluginFusioninventoryTask', 'cleanondemand', 86400,
