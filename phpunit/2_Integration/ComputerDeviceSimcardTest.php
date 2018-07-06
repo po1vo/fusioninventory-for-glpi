@@ -75,6 +75,7 @@ class ComputerDeviceSimcardTest extends RestoreDatabase_TestCase {
          'batteries'      => [],
          'remote_mgmt'    => [],
          'bios'           => [],
+         'powersupply'    => [],
          'simcards'       => [
             ['serial'            => '11124406000051565111',
              'msin'              => '204043721717241',
@@ -143,6 +144,7 @@ class ComputerDeviceSimcardTest extends RestoreDatabase_TestCase {
          'batteries'      => [],
          'remote_mgmt'    => [],
          'bios'           => [],
+         'powersupply'    => [],
          'simcards'       => [
             ['serial'            => '11124406000051565111',
              'msin'              => '204043721717241',

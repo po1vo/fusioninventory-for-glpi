@@ -279,16 +279,29 @@ class ComputerUpdateTest extends RestoreDatabase_TestCase {
                'power'            => '750 W',
                'serial'           => 'CN716154CH13E7',
                'manufacturers_id' => 'DELL',
-               'is_atx'           => ''
             ),
             Array(
                'designation'      => '0HTRH4A01',
                'power'            => '750 W',
                'serial'           => 'CN716154CH1475',
                'manufacturers_id' => 'DELL',
-               'is_atx'           => ''
             )
          );
+
+      $a_inventory['powersupply'] = [
+            [
+               'designation'      => '0HTRH4A01',
+               'power'            => '750 W',
+               'serial'           => 'CN716154CH13E7',
+               'manufacturers_id' => 'DELL',
+            ],
+            [
+               'designation'      => '0HTRH4A01',
+               'power'            => '750 W',
+               'serial'           => 'CN716154CH1475',
+               'manufacturers_id' => 'DELL',
+            ]
+         ];
 
       $pfiComputerLib   = new PluginFusioninventoryInventoryComputerLib();
       $computer         = new Computer();
