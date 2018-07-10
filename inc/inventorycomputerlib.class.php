@@ -408,7 +408,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             foreach ($a_computerinventory['powersupply'] as $key_inv => $array_inv) {
 
                // if the PSU has no serial or partnum, don't add and unset it
-               if (!isset($array_inv['serial']) || !isset($array_inv['designation'])) {
+               if (empty($array_inv['serial']) || empty($array_inv['designation'])) {
                   unset($a_computerinventory['powersupply'][$key_inv]);
                   break;
                }
