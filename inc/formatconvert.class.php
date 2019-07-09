@@ -1003,6 +1003,32 @@ class PluginFusioninventoryFormatconvert {
          }
       }
 
+      // * LLDP
+      $a_inventory['lldp'] = [];
+      if ($pfConfig->getValue('component_lldp') == 1) {
+         if (isset($array['LLDP'])) {
+            foreach ($array['LLDP'] as $a_lldp) {
+               if (is_array($a_lldp)
+                  && isset($a_lldp['MACADDR'])
+                  && isset($a_lldp['CHASSISID'])
+                  && (isset($a_lldp['PORTID']) || isset($a_lldp['PORTDESC']))
+               ) {
+                  $array_tmp = $thisc->addValues(
+                     $a_lldp,
+                     [
+                        'MACADDR'   => 'macaddr',
+                        'CHASSISID' => 'sysmac',
+                        'PORTID'    => 'logical_number',
+                        'PORTDESC'  => 'ifdescr',
+                        'SYSNAME'   => 'sysdescr',
+                        'VLANNAME'  => 'vlanName',
+                        'PVID'      => 'vlanTag']);
+                  $a_inventory['lldp'][] = $array_tmp;
+               }
+            }
+         }
+      }
+
       // * MEMORIES
       $a_inventory['memory'] = array();
       if ($pfConfig->getValue('component_memory') == 1) {

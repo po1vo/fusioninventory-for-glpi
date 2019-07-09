@@ -1014,6 +1014,42 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             $this->manageNetworkPort($a_computerinventory['networkport'], $computers_id, $no_history);
          }
 
+         // * LLDP connections
+         if ($pfConfig->getValue("component_lldp") != 0) {
+            $pfNetworkEquipment = new PluginFusioninventoryInventoryNetworkEquipmentLib();
+            $pfNetworkPort = new PluginFusioninventoryNetworkPort();
+
+            foreach ($a_computerinventory['lldp'] as $a_lldp) {
+               $portID = $pfNetworkPort->getPortIDfromSysmacandPortnumber2(
+                  $a_lldp['mac'],
+                  $a_lldp['logical_number']);
+
+               $query =
+                  "SELECT id
+                  FROM `glpi_networkports`
+                  WHERE `mac`='".$a_lldp['macaddr']."'
+                  AND `itemtype`='Computer'
+                  LIMIT 1";
+               $resultPort = $DB->query($queryPort);
+               if ($DB->numrows($resultPort) == "1") {
+                  $dataPort = $DB->fetch_assoc($resultPort);
+                  $networkports_id = $dataPort['id'];
+               }
+
+               if ($portID && $networkports_id && $portID > 0 && $networkports_id > 0) {
+                  $wire = new NetworkPort_NetworkPort();
+                  $contact_id = $wire->getOppositeContact($networkports_id);
+                  if (!($contact_id AND $contact_id == $portID)) {
+                     $pfNetworkPort->disconnectDB($networkports_id);
+                     $pfNetworkPort->disconnectDB($portID);
+                     $wire->add([
+                        'networkports_id_1' => $networkports_id,
+                        'networkports_id_2' => $portID]);
+                  }
+               }
+            }
+         }
+
 
       // * Antivirus
       if ($pfConfig->getValue("import_antivirus") != 0) {

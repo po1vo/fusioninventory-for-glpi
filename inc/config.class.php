@@ -131,6 +131,7 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       $input['component_networkcardvirtual'] = 1;
       $input['otherserial']            = 0;
       $input['component_battery']      = 1;
+      $input['component_lldp']         = 0;
 
       $input['threads_networkdiscovery'] = 20;
       $input['threads_networkinventory'] = 10;
@@ -717,7 +718,21 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       Dropdown::showYesNo("component_simcard",
                           $pfConfig->getValue('component_simcard'));
       echo "</td>";
+      echo "</tr>";
 
+      echo "<tr class='tab_bg_1'>";
+      echo "<td>";
+      echo _n('LLDP computer connections', 'LLDP computer connections', 2, "fusioninventory");
+      echo "</td>";
+      echo "<td>";
+      Dropdown::showYesNo("component_lldp",
+                          $pfConfig->getValue('component_lldp'));
+      echo "</td>";
+
+      echo "<td>";
+      echo "</td>";
+      echo "<td>";
+      echo "</td>";
       echo "</tr>";
 
       $options['candel'] = false;
