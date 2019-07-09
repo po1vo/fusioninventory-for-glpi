@@ -660,25 +660,18 @@ class PluginFusioninventoryNetworkPort extends CommonDBTM {
 
       $PortID = 0;
 
-      if (is_numeric($ifnumber)) {
-         $queryPort =
-            "SELECT `id`
-            FROM `glpi_networkports`
-            WHERE `mac`='".$ifnumber."'
-               AND `itemtype`='NetworkEquipment'
-               AND `logical_number`='".$ifnumber."'
-            LIMIT 1";
-      } else {
-         $queryPort =
-            "SELECT n.`id` AS `id`
-            FROM `glpi_networkports` n
-            JOIN `glpi_networkports` n2
-               ON n.`items_id`=n2.`items_id`
-            WHERE n.`itemtype`='NetworkEquipment'
-               AND n.`name`='".$ifnumber."'
-               AND n2.`mac`='".$sysmac."'
-            LIMIT 1";
-      }
+      $queryPort =
+         "SELECT n.`id` AS `id`
+         FROM `glpi_networkports` n
+         JOIN `glpi_networkports` n2
+            ON n.`items_id`=n2.`items_id`
+         WHERE n.`itemtype`='NetworkEquipment'
+            AND n2.`mac`='".$sysmac."'";
+
+      $queryPort .= " AND n.`";
+      $queryPort .= is_numeric($ifnumber) ? "logical_number" : "name";
+      $queryPort .= "`='".$ifnumber."' LIMIT 1";
+
       $resultPort = $DB->query($queryPort);
       if ($DB->numrows($resultPort) == "1") {
          $dataPort = $DB->fetch_assoc($resultPort);

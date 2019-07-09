@@ -113,7 +113,8 @@ class PluginFusioninventoryFormatconvert {
                            'VIRTUALMACHINES', 'ANTIVIRUS', 'MONITORS',
                            'PRINTERS', 'USBDEVICES', 'PHYSICAL_VOLUMES',
                            'VOLUME_GROUPS', 'LOGICAL_VOLUMES', 'BATTERIES',
-                           'LICENSEINFOS', 'STORAGES', 'INPUTS', 'REMOTE_MGMT','POWERSUPPLIES');
+                           'LICENSEINFOS', 'STORAGES', 'INPUTS', 'REMOTE_MGMT',
+                           'POWERSUPPLIES', 'LLDP');
          foreach ($a_fields as $field) {
             if (isset($datainventory['CONTENT'][$field])
                     AND !is_array($datainventory['CONTENT'][$field])) {
@@ -1017,7 +1018,7 @@ class PluginFusioninventoryFormatconvert {
                   $array_tmp = $thisc->addValues(
                      $a_lldp,
                      [
-                        'MACADDR'   => 'macaddr',
+                        'MACADDR'   => 'mac',
                         'CHASSISID' => 'sysmac',
                         'PORTID'    => 'logical_number',
                         'PORTDESC'  => 'ifdescr',

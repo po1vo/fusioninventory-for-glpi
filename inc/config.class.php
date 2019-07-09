@@ -714,7 +714,7 @@ class PluginFusioninventoryConfig extends CommonDBTM {
 
       echo "</td>";
       echo "<td>";
-      echo _n('Power Supply', 'Power Supplies', 2);
+      echo _n('Power Supply', 'Power Supplies', 2, "fusioninventory");
       echo "</td>";
       echo "<td>";
       Dropdown::showYesNo("component_powersupply",

@@ -1071,21 +1071,21 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
 
          // * LLDP connections
          if ($pfConfig->getValue("component_lldp") != 0) {
-            $pfNetworkEquipment = new PluginFusioninventoryInventoryNetworkEquipmentLib();
             $pfNetworkPort = new PluginFusioninventoryNetworkPort();
 
             foreach ($a_computerinventory['lldp'] as $a_lldp) {
                $portID = $pfNetworkPort->getPortIDfromSysmacandPortnumber2(
-                  $a_lldp['mac'],
+                  $a_lldp['sysmac'],
                   $a_lldp['logical_number']);
 
                $query =
                   "SELECT id
                   FROM `glpi_networkports`
-                  WHERE `mac`='".$a_lldp['macaddr']."'
+                  WHERE `mac`='".$a_lldp['mac']."'
                   AND `itemtype`='Computer'
+                  AND `items_id`='".$computers_id."'
                   LIMIT 1";
-               $resultPort = $DB->query($queryPort);
+               $resultPort = $DB->query($query);
                if ($DB->numrows($resultPort) == "1") {
                   $dataPort = $DB->fetch_assoc($resultPort);
                   $networkports_id = $dataPort['id'];
