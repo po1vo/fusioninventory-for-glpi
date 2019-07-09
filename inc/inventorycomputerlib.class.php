@@ -1069,7 +1069,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             $this->manageNetworkPort($a_computerinventory['networkport'], $computers_id, $no_history);
          }
 
-         // * LLDP connections
+      // * LLDP connections
          if ($pfConfig->getValue("component_lldp") != 0) {
             $pfNetworkPort = new PluginFusioninventoryNetworkPort();
 
