@@ -113,7 +113,7 @@ class PluginFusioninventoryFormatconvert {
                            'VIRTUALMACHINES', 'ANTIVIRUS', 'MONITORS',
                            'PRINTERS', 'USBDEVICES', 'PHYSICAL_VOLUMES',
                            'VOLUME_GROUPS', 'LOGICAL_VOLUMES', 'BATTERIES',
-                           'LICENSEINFOS', 'STORAGES', 'INPUTS', 'REMOTE_MGMT');
+                           'LICENSEINFOS', 'STORAGES', 'INPUTS', 'REMOTE_MGMT','POWERSUPPLIES');
          foreach ($a_fields as $field) {
             if (isset($datainventory['CONTENT'][$field])
                     AND !is_array($datainventory['CONTENT'][$field])) {
@@ -284,6 +284,7 @@ class PluginFusioninventoryFormatconvert {
          'printer'                 => array(),
          'peripheral'              => array(),
          'storage'                 => array(),
+         'powersupply'             => array(),
          'remote_mgmt'             => array()
       );
       $thisc = new self();
@@ -1442,11 +1443,23 @@ class PluginFusioninventoryFormatconvert {
             foreach ($array['ANTIVIRUS'] as $a_antiviruses) {
                $array_tmp = $thisc->addValues($a_antiviruses,
                                              array(
-                                                'NAME'     => 'name',
-                                                'COMPANY'  => 'manufacturers_id',
-                                                'VERSION'  => 'antivirus_version',
-                                                'ENABLED'  => 'is_active',
-                                                'UPTODATE' => 'is_uptodate'));
+                                                'NAME'         => 'name',
+                                                'COMPANY'      => 'manufacturers_id',
+                                                'VERSION'      => 'antivirus_version',
+                                                'BASE_VERSION' => 'signature_version',
+                                                'ENABLED'      => 'is_active',
+                                                'UPTODATE'     => 'is_uptodate',
+                                                'EXPIRATION'   => 'date_expiration'));
+               //Check if the expiration date has the right format to be inserted in DB
+               if (isset($array_tmp['date_expiration'])) {
+                  $matches = array();
+                  preg_match("/^(\d{2})\/(\d{2})\/(\d{4})$/", $array_tmp['date_expiration'], $matches);
+                  if (count($matches) == 4) {
+                     $array_tmp['date_expiration'] = $matches[3]."-".$matches[2]."-".$matches[1];
+                  } else {
+                     unset($array_tmp['date_expiration']);
+                  }
+               }
                $a_inventory['antivirus'][] = $array_tmp;
             }
          }
@@ -1495,6 +1508,22 @@ class PluginFusioninventoryFormatconvert {
          }
       }
 
+      // * POWER SUPPLIES
+      $a_inventory['powersupply'] = [];
+      if (isset($array['POWERSUPPLIES'])) {
+         foreach ($array['POWERSUPPLIES'] as $a_psu) {
+            $array_tmp = $thisc->addValues(
+               $a_psu,
+               [
+                  'SERIALNUMBER'  => 'serial',
+                  'PARTNUM'       => 'designation',
+                  'MANUFACTURER'  => 'manufacturers_id',
+                  'POWER_MAX'     => 'power'
+               ]
+            );
+            $a_inventory['powersupply'][] = $array_tmp;
+         }
+      }
 
       $plugin_params = array(
          'inventory' => $a_inventory,
@@ -1586,6 +1615,7 @@ class PluginFusioninventoryFormatconvert {
                                         'PUBLISHER'       => 'manufacturers_id',
                                         'NAME'            => 'name',
                                         'VERSION'         => 'version',
+                                        'COMMENTS'        => 'comment',
                                         'INSTALLDATE'     => 'date_install',
                                         'SYSTEM_CATEGORY' => '_system_category'
                                        ]

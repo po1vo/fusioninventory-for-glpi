@@ -122,6 +122,7 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       $input['component_networkdrive'] = 1;
       $input['component_control']      = 1;
       $input['component_removablemedia'] = 0;
+      $input['component_powersupply']  = 1;
       $input['component_simcard']      = 1;
       $input['states_id_default']      = 0;
       $input['states_id_snmp_default'] = 0;
@@ -711,6 +712,17 @@ class PluginFusioninventoryConfig extends CommonDBTM {
                           $pfConfig->getValue('component_removablemedia'));
       echo "</td>";
 
+      echo "</td>";
+      echo "<td>";
+      echo _n('Power Supply', 'Power Supplies', 2);
+      echo "</td>";
+      echo "<td>";
+      Dropdown::showYesNo("component_powersupply",
+                          $pfConfig->getValue('component_powersupply'));
+      echo "</td>";
+      echo "</tr>";
+
+      echo "<tr class='tab_bg_1'>";
       echo "<td>";
       echo _n('Simcard', 'Simcards', 2);
       echo "</td>";
@@ -718,9 +730,7 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       Dropdown::showYesNo("component_simcard",
                           $pfConfig->getValue('component_simcard'));
       echo "</td>";
-      echo "</tr>";
 
-      echo "<tr class='tab_bg_1'>";
       echo "<td>";
       echo _n('LLDP computer connections', 'LLDP computer connections', 2, "fusioninventory");
       echo "</td>";
@@ -728,12 +738,8 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       Dropdown::showYesNo("component_lldp",
                           $pfConfig->getValue('component_lldp'));
       echo "</td>";
-
-      echo "<td>";
-      echo "</td>";
-      echo "<td>";
-      echo "</td>";
       echo "</tr>";
+
 
       $options['candel'] = false;
       $pfConfig->showFormButtons($options);
