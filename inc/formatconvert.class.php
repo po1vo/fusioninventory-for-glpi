@@ -1019,6 +1019,7 @@ class PluginFusioninventoryFormatconvert {
                      $a_lldp,
                      [
                         'MACADDR'   => 'mac',
+                        'IFNAME'    => 'ifname',
                         'CHASSISID' => 'sysmac',
                         'PORTID'    => 'logical_number',
                         'PORTDESC'  => 'ifdescr',

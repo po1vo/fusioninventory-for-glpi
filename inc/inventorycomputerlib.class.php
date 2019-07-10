@@ -1084,6 +1084,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                   WHERE `mac`='".$a_lldp['mac']."'
                   AND `itemtype`='Computer'
                   AND `items_id`='".$computers_id."'
+                  AND `name`='".$a_lldp['ifname']."'
                   LIMIT 1";
                $resultPort = $DB->query($query);
                if ($DB->numrows($resultPort) == "1") {
