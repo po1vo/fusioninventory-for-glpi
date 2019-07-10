@@ -1074,6 +1074,9 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             $pfNetworkPort = new PluginFusioninventoryNetworkPort();
 
             foreach ($a_computerinventory['lldp'] as $a_lldp) {
+               $portId = 0;
+               $networkports_id = 0;
+
                $portID = $pfNetworkPort->getPortIDfromSysmacandPortnumber2(
                   $a_lldp['sysmac'],
                   $a_lldp['logical_number']);
@@ -1092,7 +1095,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                   $networkports_id = $dataPort['id'];
                }
 
-               if ($portID && $networkports_id && $portID > 0 && $networkports_id > 0) {
+               if ($portID > 0 && $networkports_id > 0) {
                   $wire = new NetworkPort_NetworkPort();
                   $contact_id = $wire->getOppositeContact($networkports_id);
                   if (!($contact_id AND $contact_id == $portID)) {
