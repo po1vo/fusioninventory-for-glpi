@@ -326,14 +326,17 @@ class PluginFusioninventoryInventoryNetworkEquipmentLib extends PluginFusioninve
             }
 
             // Connections
-            if (isset($a_inventory['connection-lldp'][$a_port['logical_number']])) {
-               $this->importConnectionLLDP(
-                          $a_inventory['connection-lldp'][$a_port['logical_number']],
-                          $networkports_id);
-            } else if (isset($a_inventory['connection-mac'][$a_port['logical_number']])) {
-               $this->importConnectionMac(
-                          $a_inventory['connection-mac'][$a_port['logical_number']],
-                          $networkports_id);
+            $pfConfig = new PluginFusioninventoryConfig();
+            if ($pfConfig->getValue("networkinventory_import_connections") == 1) {
+               if (isset($a_inventory['connection-lldp'][$a_port['logical_number']])) {
+                  $this->importConnectionLLDP(
+                             $a_inventory['connection-lldp'][$a_port['logical_number']],
+                             $networkports_id);
+               } else if (isset($a_inventory['connection-mac'][$a_port['logical_number']])) {
+                  $this->importConnectionMac(
+                             $a_inventory['connection-mac'][$a_port['logical_number']],
+                             $networkports_id);
+               }
             }
 
             // Vlan

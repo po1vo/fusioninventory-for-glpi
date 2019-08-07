@@ -821,6 +821,16 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       echo "</td>";
       echo "</tr>";
 
+      echo "<tr class='tab_bg_1'>";
+      echo "<td></td><td></td>";
+      echo "<td>".__('Import network connections', 'fusioninventory')."&nbsp;".
+              "(".strtolower(__('Network inventory (SNMP)', 'fusioninventory')).")</td>";
+      echo "<td align='center'>";
+      Dropdown::showYesNo("networkinventory_import_connections",
+             $pfConfig->getValue('networkinventory_import_connections'));
+      echo "</td>";
+      echo "</tr>";
+
       $options['candel'] = false;
       $pfsnmpConfig->showFormButtons($options);
 
