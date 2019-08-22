@@ -386,7 +386,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
          $db_powersupplies = [];
          if ($no_history === FALSE) {
             $query = "SELECT `glpi_items_devicepowersupplies`.`id`, `designation`,
-                  `power`, `serial`, `devicepowersupplies_id`
+                  `power`, `serial`, `devicepowersupplies_id`, `manufacturers_id`
                FROM `glpi_items_devicepowersupplies`
                LEFT JOIN `glpi_devicepowersupplies`
                   ON `devicepowersupplies_id`=`glpi_devicepowersupplies`.`id`
@@ -414,8 +414,18 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                }
 
                foreach ($db_powersupplies as $key_db => $array_db) {
-                  unset($array_db['devicepowersupplies_id']);
-                  if ($array_db == $array_inv) {
+                  if ($array_db['designation'] == $array_inv['designation']) {
+                     $input = [];
+                     if (empty($array_db['power']) && !empty($array_inv['power'])) {
+                        $input['power'] = $array_inv['power'];
+                     }
+                     if (empty($array_db['manufacturers_id']) && !empty($array_inv['manufacturers_id'])) {
+                        $input['manufacturers_id'] = $array_inv['manufacturers_id'];
+                     }
+                     if (count($input) > 0) {
+                        $input['id'] = $array_db['devicepowersupplies_id'];
+                        $devicePowerSupply->update($input);
+                     }
                      unset($a_computerinventory['powersupply'][$key_inv]);
                      unset($db_powersupplies[$key_db]);
                      break;
