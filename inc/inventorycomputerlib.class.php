@@ -384,7 +384,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
       // * Power Supplies
       if ($pfConfig->getValue("component_powersupply") != 0) {
          $db_powersupplies = [];
-         if ($no_history === false) {
+         if ($no_history === FALSE) {
             $query = "SELECT `glpi_items_devicepowersupplies`.`id`, `designation`,
                   `power`, `serial`, `devicepowersupplies_id`
                FROM `glpi_items_devicepowersupplies`
