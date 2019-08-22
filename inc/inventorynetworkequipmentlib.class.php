@@ -271,6 +271,7 @@ class PluginFusioninventoryInventoryNetworkEquipmentLib extends PluginFusioninve
       $pfNetworkporttype = new PluginFusioninventoryNetworkporttype();
       $networkPort       = new NetworkPort();
       $pfNetworkPort     = new PluginFusioninventoryNetworkPort();
+      $pfConfig          = new PluginFusioninventoryConfig();
       $networkports_id   = 0;
       $pfArrayPortInfos  = [];
       foreach ($a_inventory['networkport'] as $a_port) {
@@ -326,7 +327,6 @@ class PluginFusioninventoryInventoryNetworkEquipmentLib extends PluginFusioninve
             }
 
             // Connections
-            $pfConfig = new PluginFusioninventoryConfig();
             if ($pfConfig->getValue("networkinventory_import_connections") == 1) {
                if (isset($a_inventory['connection-lldp'][$a_port['logical_number']])) {
                   $this->importConnectionLLDP(
