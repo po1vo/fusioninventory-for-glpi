@@ -396,6 +396,11 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
                continue;
 
             $name = $matches[1];
+
+            if (!isset($names[$name]))
+               $names[$name] = [];
+            if (!isset($names[$name][$v]))
+               $names[$name][$v] = 0;
             $names[$name][$v]++;
 
             if(array_key_exists(2, $matches)) // Juniper QFX only
@@ -412,8 +417,11 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
             echo "<tr><th style='padding:0 1em;'>Type</th><th style='padding:0 1em;'>".
                "Online</th><th style='padding:0 1em;'>Offline</th></tr>";
 
-            foreach ($names as $k => $v)
-               echo "<tr><td>".$k."</td><td>".$v[1]."</td><td>".$v[2]."</td></tr>";
+            foreach ($names as $k => $v) {
+               $online = isset($v[1]) ? $v[1] : 0;
+               $offline = isset($v[2]) ? $v[2] : 0;
+               echo "<tr><td>$k</td><td>$online</td><td>$offline</td></tr>";
+            }
 
             echo "</table>";
          }
