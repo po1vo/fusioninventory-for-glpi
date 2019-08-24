@@ -413,17 +413,19 @@ class PluginFusioninventoryNetworkEquipment extends PluginFusioninventoryItem {
          }
 
          if (!empty($names)) {
-            echo "<table style='margin: 0 auto; font-size: 100%; padding-top: 1em;'>";
-            echo "<tr><th style='padding:0 1em;'>Type</th><th style='padding:0 1em;'>".
-               "Online</th><th style='padding:0 1em;'>Offline</th></tr>";
+            echo "\n<div class='spaced' style='margin-top: 15px;'>\n";
+            echo "<table class='tab_cadre_fixehov'>\n";
+            echo "<tr class='noHover'><th colspan=3>Statistics</th></tr>\n";
+            echo "<tr class='tab_bg_1'><td class='subheader'>Type</td><td class='subheader'>".
+               "Online</td><td class='subheader'>Offline</td></tr>";
 
             foreach ($names as $k => $v) {
                $online = isset($v[1]) ? $v[1] : 0;
                $offline = isset($v[2]) ? $v[2] : 0;
-               echo "<tr><td>$k</td><td>$online</td><td>$offline</td></tr>";
+               echo "<tr class='tab_bg_1'><td class='center'>$k</td><td class='center'>$online</td><td class='center'>$offline</td></tr>\n";
             }
 
-            echo "</table>";
+            echo "</table></div>\n";
          }
       }
 
