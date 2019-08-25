@@ -561,6 +561,10 @@ class PluginFusioninventoryUnmanaged extends CommonDBTM {
     */
    function hubNetwork($pfNetworkport, $a_mac) {
 
+      $pfConfig = new PluginFusioninventoryConfig();
+      if ($pfConfig->getValue('networkinventory_create_hubs') != 1)
+         return;
+
       $nn = new NetworkPort_NetworkPort();
       $Netport = new NetworkPort();
       // Get port connected on switch port

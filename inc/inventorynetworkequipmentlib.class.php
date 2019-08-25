@@ -327,7 +327,23 @@ class PluginFusioninventoryInventoryNetworkEquipmentLib extends PluginFusioninve
             }
 
             // Connections
-            if ($pfConfig->getValue("networkinventory_import_connections") == 1) {
+            $do_import_connections = true;
+            if ($pfConfig->getValue("networkinventory_special_import") == 1 &&
+               isset($a_inventory['vlans'][$a_port['logical_number']]) &&
+               is_array($a_inventory['vlans'][$a_port['logical_number']])) {
+
+               $a_vlan = $a_inventory['vlans'][$a_port['logical_number']];
+               $search = $pfConfig->getValue('vlan_regexp');
+               $vlan = reset($a_vlan);
+
+               if (!isset($vlan) && $a_port['iftype'] != 56) // if no vlan and port is not Fiber
+                  $do_import_connections = false;
+
+               if (empty($search) || (isset($vlan['name']) && !preg_match($search, $vlan['name'])))
+                  $do_import_connections = false;
+            }
+
+            if ($do_import_connections) {
                if (isset($a_inventory['connection-lldp'][$a_port['logical_number']])) {
                   $this->importConnectionLLDP(
                              $a_inventory['connection-lldp'][$a_port['logical_number']],

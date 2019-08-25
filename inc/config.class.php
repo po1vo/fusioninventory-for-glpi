@@ -821,13 +821,35 @@ class PluginFusioninventoryConfig extends CommonDBTM {
       echo "</td>";
       echo "</tr>";
 
+      echo "<tr>";
+      echo "<th colspan='4'>";
+      echo __('Badoo specific options', 'fusioninventory');
+      echo "</th>";
+      echo "</tr>";
+
       echo "<tr class='tab_bg_1'>";
-      echo "<td></td><td></td>";
-      echo "<td>".__('Import network connections', 'fusioninventory')."&nbsp;".
+      echo "<td colspan=2>".__('Create hubs (when multiple MACs on port)', 'fusioninventory')."&nbsp;".
               "(".strtolower(__('Network inventory (SNMP)', 'fusioninventory')).")</td>";
-      echo "<td align='center'>";
-      Dropdown::showYesNo("networkinventory_import_connections",
-             $pfConfig->getValue('networkinventory_import_connections'));
+      echo "<td align='center' colspan=2>";
+      Dropdown::showYesNo("networkinventory_create_hubs",
+             $pfConfig->getValue('networkinventory_create_hubs'));
+      echo "</td>";
+      echo "</tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td colspan=2>".__('Import MACs only from specific VLANs', 'fusioninventory')."&nbsp;".
+              "(".strtolower(__('Network inventory (SNMP)', 'fusioninventory')).")</td>";
+      echo "<td align='center' colspan=2>";
+      Dropdown::showYesNo("networkinventory_special_import",
+             $pfConfig->getValue('networkinventory_special_import'));
+      echo "</td>";
+      echo "</tr>";
+
+      echo "<tr class='tab_bg_1'>";
+      echo "<td colspan=2>".__('VLAN regexp', 'fusioninventory')."</td>";
+      echo "<td colspan=2>";
+      echo "<input type='text' name='vlan_regexp' id='vlan_regexp' value='".
+         $pfConfig->getValue('vlan_regexp')."' size='60' />";
       echo "</td>";
       echo "</tr>";
 
