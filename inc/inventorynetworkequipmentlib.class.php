@@ -407,20 +407,16 @@ class PluginFusioninventoryInventoryNetworkEquipmentLib extends PluginFusioninve
                                                          $a_lldp['sysdescr'],
                                                          $a_lldp['name'],
                                                          $a_lldp['model']);
-      } else {
-         if ($a_lldp['mac'] != '') {
-            $portID = $pfNetworkPort->getPortIDfromSysmacandPortnumber($a_lldp['mac'],
-                                                                       $a_lldp['logical_number'],
-                                                                       $a_lldp);
-         }
+      } else if ($a_lldp['mac'] != '') {
+         $portID = $pfNetworkPort->getPortIDfromSysmacandPortnumber($a_lldp['mac'],
+                                                                    $a_lldp['logical_number'],
+                                                                    $a_lldp);
       }
 
-      if ($portID
-              && $portID > 0) {
+      if ($portID && $portID > 0) {
          $wire = new NetworkPort_NetworkPort();
          $contact_id = $wire->getOppositeContact($networkports_id);
-         if (!($contact_id
-                 AND $contact_id == $portID)) {
+         if (!($contact_id AND $contact_id == $portID)) {
             $pfNetworkPort->disconnectDB($networkports_id);
             $pfNetworkPort->disconnectDB($portID);
             $wire->add(array('networkports_id_1'=> $networkports_id,
