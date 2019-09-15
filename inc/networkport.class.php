@@ -555,7 +555,7 @@ class PluginFusioninventoryNetworkPort extends CommonDBTM {
          AND `itemtype`!='PluginFusioninventoryUnmanaged'";
 
       if (isset($ifnumber))
-         $queryPort = " AND `logical_number`='".$ifnumber."'";
+         $queryPort .= " AND `logical_number`='".$ifnumber."'";
 
       $resultPort = $DB->query($queryPort);
       if ($DB->numrows($resultPort) == "1") {
