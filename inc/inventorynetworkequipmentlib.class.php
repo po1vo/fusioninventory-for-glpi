@@ -329,21 +329,17 @@ class PluginFusioninventoryInventoryNetworkEquipmentLib extends PluginFusioninve
             // Connections
             $do_import_connections = true;
             if ($pfConfig->getValue("networkinventory_special_import") == 1) {
-               if (isset($a_inventory['vlans'][$a_port['logical_number']]) &&
-                  is_array($a_inventory['vlans'][$a_port['logical_number']])) {
-
+               if (isset($a_inventory['vlans'][$a_port['logical_number']]))
                   $a_vlan = $a_inventory['vlans'][$a_port['logical_number']];
-                  $search = $pfConfig->getValue('vlan_regexp');
-                  $vlan = reset($a_vlan);
 
-                  if (!isset($vlan) && $a_port['iftype'] != 56)  // if no vlan and port is not Fiber
-                     $do_import_connections = false;
+               $search = $pfConfig->getValue('vlan_regexp');
+               if (is_array($a_vlan))
+                  $vlan = reset($a_vlan);  // get first vlan in array
 
-                  if (empty($search) || (isset($vlan['name']) && !preg_match($search, $vlan['name'])))
-                     $do_import_connections = false;
-               } else if ($a_port['iftype'] != 56) {
-                  $do_import_connections = false;  // if no vlan and port is not Fiber
-               }
+               if (empty($search) ||
+                  (!isset($vlan) && $a_port['iftype'] != 56) ||  // if no vlan and port is not Fiber
+                  (!empty($vlan['name']) && !preg_match($search, $vlan['name'])))  // if vlan name does not match regexp
+                  $do_import_connections = false;
             }
 
             if ($do_import_connections) {
