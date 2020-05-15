@@ -329,17 +329,24 @@ class PluginFusioninventoryInventoryNetworkEquipmentLib extends PluginFusioninve
             // Connections
             $do_import_connections = true;
             if ($pfConfig->getValue("networkinventory_special_import") == 1) {
-               if (isset($a_inventory['vlans'][$a_port['logical_number']]))
+               $vlan = null;
+
+               if (isset($a_inventory['vlans'][$a_port['logical_number']])) {
                   $a_vlan = $a_inventory['vlans'][$a_port['logical_number']];
+                  if (is_array($a_vlan))
+                     $vlan = reset($a_vlan);  // get first vlan in array
+               }
 
-               $search = $pfConfig->getValue('vlan_regexp');
-               if (is_array($a_vlan))
-                  $vlan = reset($a_vlan);  // get first vlan in array
+               $regexp = $pfConfig->getValue('vlan_regexp');
 
-               if (empty($search) ||
-                  (!isset($vlan) && $a_port['iftype'] != 56) ||  // if no vlan and port is not Fiber
-                  (!empty($vlan['name']) && !preg_match($search, $vlan['name'])))  // if vlan name does not match regexp
+               if (empty($regexp) ||
+                  // if no vlan and port is not Fiber
+                  (!isset($vlan) && $a_port['iftype'] != 56) ||
+                  // if vlan name does not match regexp
+                  (!empty($vlan['name']) && !preg_match($regexp, $vlan['name'])))
+               {
                   $do_import_connections = false;
+               }
             }
 
             if ($do_import_connections) {
@@ -418,7 +425,7 @@ class PluginFusioninventoryInventoryNetworkEquipmentLib extends PluginFusioninve
          if (!($contact_id AND $contact_id == $portID)) {
             $pfNetworkPort->disconnectDB($networkports_id);
             $pfNetworkPort->disconnectDB($portID);
-            $wire->add(array('networkports_id_1'=> $networkports_id,
+            $wire->add(array('networkports_id_1' => $networkports_id,
                              'networkports_id_2' => $portID));
          }
       }
