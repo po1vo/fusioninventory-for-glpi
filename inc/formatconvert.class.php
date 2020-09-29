@@ -1048,6 +1048,8 @@ class PluginFusioninventoryFormatconvert {
                                                     'SPEED'        => 'frequence',
                                                     'TYPE'         => 'devicememorytypes_id',
                                                     'SERIALNUMBER' => 'serial',
+                                                    'MODEL'        => 'product_number',
+                                                    'MANUFACTURER' => 'manufacturers_id',
                                                     'NUMSLOTS'     => 'busID'));
                   if ($array_tmp['size'] > 0) {
                      $array_tmp['designation'] = "";

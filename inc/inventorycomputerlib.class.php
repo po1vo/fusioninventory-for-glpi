@@ -1992,6 +1992,15 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
       $item_DeviceMemory            = new Item_DeviceMemory();
       $deviceMemory                 = new DeviceMemory();
 
+      if (!empty($data['product_number'])) {
+         $deviceMemoryModel = new DeviceMemoryModel();
+         $devicememorymodels_id = $deviceMemoryModel->import([
+            'name'           => $data['product_number'],
+            'product_number' => $data['product_number']
+         ]);
+         $data['devicememorymodels_id'] = $devicememorymodels_id;
+      }
+
       $memories_id = $deviceMemory->import($data);
       $data['devicememories_id'] = $memories_id;
       $data['itemtype']          = 'Computer';
