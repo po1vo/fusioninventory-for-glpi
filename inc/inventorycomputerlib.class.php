@@ -450,9 +450,11 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             if ($no_history === FALSE) {
                $query = "SELECT `glpi_items_devicememories`.`id`, `designation`, `size`,
                      `frequence`, `serial`, `devicememorytypes_id`,
+                     `manufacturers_id`, `glpi_devicememorymodels`.`name` AS 'product_number',
                      `glpi_items_devicememories`.`busID`
                      FROM `glpi_items_devicememories`
                   LEFT JOIN `glpi_devicememories` ON `devicememories_id`=`glpi_devicememories`.`id`
+                  LEFT JOIN `glpi_devicememorymodels` ON `glpi_devicememorymodels`.`id`=`glpi_devicememories`.`devicememorymodels_id`
                   WHERE `items_id` = '$computers_id'
                      AND `itemtype`='Computer'
                      AND `is_dynamic`='1'";
