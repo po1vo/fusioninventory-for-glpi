@@ -901,6 +901,7 @@ class PluginFusioninventoryFormatconvert {
                   $array_tmp = $thisc->addValues($a_controllers,
                                                  array(
                                                     'NAME'          => 'designation',
+                                                    'MODEL'         => 'product_number',
                                                     'MANUFACTURER'  => 'manufacturers_id',
                                                     'type'          => 'interfacetypes_id'));
                   if (isset($a_controllers['PCIID'])) {

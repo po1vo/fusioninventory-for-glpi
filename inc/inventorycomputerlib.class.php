@@ -833,8 +833,10 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             $db_controls = array();
             if ($no_history === FALSE) {
                $query = "SELECT `glpi_items_devicecontrols`.`id`, `interfacetypes_id`,
+                     `glpi_devicecontrolmodels`.`name` AS 'product_number',
                      `manufacturers_id`, `designation` FROM `glpi_items_devicecontrols`
                   LEFT JOIN `glpi_devicecontrols` ON `devicecontrols_id`=`glpi_devicecontrols`.`id`
+                  LEFT JOIN `glpi_devicecontrolmodels` ON `glpi_devicecontrolmodels`.`id`=`glpi_devicecontrols`.`devicecontrolmodels_id`
                   WHERE `items_id` = '$computers_id'
                      AND `itemtype`='Computer'
                      AND `is_dynamic`='1'";
@@ -2134,6 +2136,15 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
    function addControl($data, $computers_id, $no_history) {
       $item_DeviceControl           = new Item_DeviceControl();
       $deviceControl                = new DeviceControl();
+
+      if (!empty($data['product_number'])) {
+         $deviceControlModel = new DeviceControlModel();
+         $devicecontrolmodels_id = $deviceControlModel->import([
+            'name'           => $data['product_number'],
+            'product_number' => $data['product_number']
+         ]);
+         $data['devicecontrolmodels_id'] = $devicecontrolmodels_id;
+      }
 
       $controllers_id = $deviceControl->import($data);
       $data['devicecontrols_id'] = $controllers_id;
